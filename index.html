@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Xərclər">
+<meta name="theme-color" content="#eef1f4">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Xərc İzləyici</title>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--ink:#14202B;--mute:#6b7885;--line:#dde3e8;--pos:#0B7A5C;--neg:#C2410C;--acc:#14202B;--onacc:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#0e141a;--card:#18212a;--ink:#eaf0f5;--mute:#8a98a6;--line:#27323d;--pos:#34d399;--neg:#fb923c;--acc:#eaf0f5;--onacc:#0e141a}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 96px);max-width:560px;margin:0 auto}
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.hero{padding:8px 4px 20px}
+.hero small{color:var(--mute);font-size:14px}
+.hero .big{font-size:46px;font-weight:700;line-height:1.1;margin:2px 0 10px}
+.hero .sub{display:flex;gap:18px;font-size:14px;color:var(--mute)}
+.hero .sub b{display:block;color:var(--ink);font-size:16px;font-weight:600}
+.card{background:var(--card);border-radius:16px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--line)}
+.daily h3{margin:0 0 2px;font-size:15px}.daily p{margin:0 0 10px;color:var(--mute);font-size:13px}
+.drow{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}
+.drow .v{font-size:22px;font-weight:700;color:var(--pos)}.drow .v small{font-size:12px;color:var(--mute);font-weight:500}
+h2{font-size:13px;color:var(--mute);font-weight:600;margin:22px 4px 8px;display:flex;justify-content:space-between;align-items:center}
+h2 button{background:none;border:0;color:var(--ink);font:600 14px inherit;padding:4px 0}
+.acc{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
+.acc:first-child{border-top:0}.acc .n{font-weight:600}.acc .t{font-size:12px;color:var(--mute)}
+.acc .b{font-weight:700;font-size:17px}.pos{color:var(--pos)}.neg{color:var(--neg)}
+.empty{color:var(--mute);font-size:14px;padding:6px 0}
+.tx{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.tx:first-child{border-top:0}.tx .m{color:var(--mute);font-size:12px}.tx button{background:none;border:0;color:var(--mute);font-size:18px;padding:0 4px}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);background:var(--acc);color:var(--onacc);border:0;border-radius:30px;padding:15px 30px;font:600 16px inherit;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;z-index:9}
+.sheet[hidden]{display:none}
+.box{background:var(--card);width:100%;max-width:560px;margin:0 auto;border-radius:22px 22px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 18px);max-height:92vh;overflow:auto;animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.6}}
+@media(prefers-reduced-motion:reduce){.box{animation:none}}
+.box h3{margin:0 0 12px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select{width:100%;font:16px inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.chk{display:flex;gap:10px;align-items:center;margin-top:12px;color:var(--ink);font-size:15px}.chk input{width:20px;height:20px}
+.tabs{display:flex;gap:6px;margin-bottom:6px}
+.tabs button{flex:1;padding:10px 4px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--ink);font:600 14px inherit}
+.tabs button.on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.btn{width:100%;margin-top:16px;padding:14px;border-radius:14px;border:0;background:var(--acc);color:var(--onacc);font:600 16px inherit}
+.btn.alt{background:none;color:var(--neg);margin-top:4px}
+.note{font-size:12px;color:var(--mute);margin-top:6px}
+.foot{display:flex;gap:10px;margin-top:24px}.foot button{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--mute);font:14px inherit}
+:focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<button class="fab" onclick="openOp('add')">+ Əməliyyat</button>
+<div class="sheet" id="sheet" hidden onclick="if(event.target===this)closeS()"><div class="box" id="box"></div></div>
+
+<script>
+const K='xerc-izleyici-v1';
+let S;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+S=S||{acc:[],tx:[]};
+const $=s=>document.querySelector(s);
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const r2=n=>Math.round(n*100)/100;
+const fmt=n=>r2(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' ₼';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=v=>{const n=parseFloat(String(v).replace(',','.').replace(/\s/g,''));return isNaN(n)?null:n};
+const A=id=>S.acc.find(a=>a.id===id);
+const assets=()=>S.acc.filter(a=>a.type==='asset');
+const exps=()=>S.acc.filter(a=>a.type==='exp');
+const sum=l=>l.reduce((s,a)=>s+a.balance,0);
+function daysLeft(){const d=new Date();const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return last-d.getDate()+1}
+
+function render(){
+  const as=sum(assets()),ex=sum(exps()),net=as-ex,dl=daysLeft();
+  const dailyAccs=exps().filter(a=>a.daily);
+  let h=`<div class="hero"><small>Hazırda sənin pulun</small>
+  <div class="big num ${net<0?'neg':''}">${fmt(net)}</div>
+  <div class="sub"><div>Hesablar<b class="num">${fmt(as)}</b></div><div>Xərclər (öhdəlik)<b class="num">${fmt(ex)}</b></div></div></div>`;
+  if(dailyAccs.length){
+    h+=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><p>Bu gün də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
+    dailyAccs.forEach(a=>{h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} qalıb</small></span><span class="v num">${fmt(Math.max(0,a.balance)/dl)}<small> / gün</small></span></div>`});
+    h+=`</div>`;
+  }
+  h+=`<h2>Hesablar <button onclick="openAcc('asset')">+ Yeni</button></h2><div class="card">`;
+  h+=assets().map(accRow).join('')||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart.</div>`;
+  h+=`</div><h2>Xərc hesabları <button onclick="openAcc('exp')">+ Yeni</button></h2><div class="card">`;
+  h+=exps().map(accRow).join('')||`<div class="empty">Məsələn: Kredit, Aylıq xərc. Bu məbləğlər öhdəlik kimi çıxılır.</div>`;
+  h+=`</div><h2>Son əməliyyatlar</h2><div class="card">`;
+  h+=S.tx.slice(0,40).map(t=>`<div class="tx"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div><div style="display:flex;align-items:center"><span class="num ${t.amt<0?'neg':'pos'}">${t.sign}${fmt(Math.abs(t.amt))}</span><button onclick="delTx('${t.id}')" aria-label="Sil">×</button></div></div>`).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
+  h+=`</div><div class="foot"><button onclick="exportD()">Nüsxə al</button><button onclick="importD()">Nüsxəni yüklə</button></div>`;
+  $('#app').innerHTML=h;
+}
+const accRow=a=>`<div class="acc" onclick="openEdit('${a.id}')"><div><div class="n">${esc(a.name)}</div>${a.type==='exp'&&a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div><div class="b num ${a.balance<0?'neg':''}">${fmt(a.balance)}</div></div>`;
+
+function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
+function closeS(){$('#sheet').hidden=true}
+const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${fmt(a.balance)})</option>`).join('');
+
+function openAcc(type){
+  openS(`<h3>${type==='asset'?'Yeni hesab':'Yeni xərc hesabı'}</h3>
+  <label>Ad</label><input id="f-name" placeholder="${type==='asset'?'Nağd, ABB debet kart':'Kredit, Aylıq xərc'}">
+  <label>Məbləğ</label><input id="f-bal" inputmode="decimal" placeholder="0.00">
+  ${type==='exp'?`<label class="chk"><input type="checkbox" id="f-daily" checked> Ayın sonuna qədər gündəlik limit göstər</label>`:''}
+  <button class="btn" onclick="saveAcc('${type}')">Yarat</button>`);
+}
+function saveAcc(type){
+  const name=$('#f-name').value.trim(),b=num($('#f-bal').value||0);
+  if(!name||b===null)return alert('Ad və məbləği düzgün yaz.');
+  S.acc.push({id:uid(),name,type,balance:r2(b),daily:type==='exp'?$('#f-daily').checked:false});
+  save();closeS();render();
+}
+function openEdit(id){
+  const a=A(id);
+  openS(`<h3>${esc(a.name)}</h3><label>Ad</label><input id="f-name" value="${esc(a.name)}">
+  <label>Cari məbləği düzəlt</label><input id="f-bal" inputmode="decimal" value="${a.balance}">
+  ${a.type==='exp'?`<label class="chk"><input type="checkbox" id="f-daily" ${a.daily?'checked':''}> Gündəlik limit göstər</label>`:''}
+  <button class="btn" onclick="saveEdit('${id}')">Yadda saxla</button>
+  <button class="btn alt" onclick="delAcc('${id}')">Hesabı sil</button>`);
+}
+function saveEdit(id){
+  const a=A(id),name=$('#f-name').value.trim(),b=num($('#f-bal').value);
+  if(!name||b===null)return alert('Ad və məbləği düzgün yaz.');
+  a.name=name;a.balance=r2(b);if(a.type==='exp')a.daily=$('#f-daily').checked;
+  save();closeS();render();
+}
+function delAcc(id){if(!confirm('Bu hesab silinsin?'))return;S.acc=S.acc.filter(a=>a.id!==id);save();closeS();render()}
+
+function openOp(kind){
+  if(!S.acc.length)return alert('Əvvəlcə hesab yarat.');
+  const T=[['add','Əlavə et'],['spend','Xərc'],['move','Transfer']];
+  let h=`<div class="tabs">${T.map(t=>`<button class="${t[0]===kind?'on':''}" onclick="openOp('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
+  if(kind==='add')h+=`<label>Hansı hesaba</label><select id="f-to">${opts(S.acc)}</select>
+    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00"><label>Qeyd (istəyə bağlı)</label><input id="f-note">
+    <div class="note">Xərc hesabına əlavə etdikdə həmin məbləğ öhdəliyə əlavə olunur.</div>`;
+  if(kind==='spend'){
+    if(!assets().length){return alert('Xərc etmək üçün əvvəlcə adi hesab yarat.')}
+    h+=`<label>Hansı hesabdan</label><select id="f-from">${opts(assets())}</select>
+    <label>Xərc hesabından da çıx</label><select id="f-cat"><option value="">Yox</option>${opts(exps())}</select>
+    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00"><label>Qeyd (istəyə bağlı)</label><input id="f-note">
+    <div class="note">Xərc hesabı seçsən (məs. Aylıq xərc), məbləğ ondan da azalır və gündəlik limit yenilənir.</div>`;}
+  if(kind==='move')h+=`<label>Haradan</label><select id="f-from">${opts(S.acc)}</select><label>Hara</label><select id="f-to">${opts(S.acc,(S.acc[1]||{}).id)}</select>
+    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00">
+    <div class="note">Transfer eyni tipli hesablar arasında olur (hesab → hesab, xərc → xərc).</div>`;
+  h+=`<button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
+  openS(h);
+}
+function post(label,sign,amt,deltas){
+  for(const id in deltas){const a=A(id);if(a)a.balance=r2(a.balance+deltas[id])}
+  S.tx.unshift({id:uid(),d:Date.now(),label,sign,amt,deltas});save();closeS();render();
+}
+function doOp(kind){
+  const amt=num($('#f-amt').value);
+  if(amt===null||amt<=0)return alert('Məbləği düzgün yaz.');
+  const note=$('#f-note')?$('#f-note').value.trim():'';
+  if(kind==='add'){const a=A($('#f-to').value);post(`${a.name}${note?' · '+note:''}`,'+',amt,{[a.id]:amt})}
+  if(kind==='spend'){
+    const a=A($('#f-from').value),c=$('#f-cat').value?A($('#f-cat').value):null;
+    const d={[a.id]:-amt};if(c)d[c.id]=-amt;
+    post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',-amt,d);
+  }
+  if(kind==='move'){
+    const f=A($('#f-from').value),t=A($('#f-to').value);
+    if(f.id===t.id)return alert('Fərqli hesablar seç.');
+    if(f.type!==t.type)return alert('Transfer yalnız eyni tipli hesablar arasında olur. Adi hesabdan xərc hesabına ödəniş üçün "Xərc" bölməsindən istifadə et.');
+    post(`${f.name} → ${t.name}`,'',amt,{[f.id]:-amt,[t.id]:amt});
+  }
+}
+function delTx(id){
+  if(!confirm('Əməliyyat silinsin və hesablar geri qaytarılsın?'))return;
+  const t=S.tx.find(x=>x.id===id);
+  for(const k in t.deltas){const a=A(k);if(a)a.balance=r2(a.balance-t.deltas[k])}
+  S.tx=S.tx.filter(x=>x.id!==id);save();render();
+}
+
+function exportD(){
+  const j=JSON.stringify(S);
+  (navigator.clipboard?navigator.clipboard.writeText(j):Promise.reject()).then(()=>alert('Nüsxə kopyalandı. Qeydlər və ya mesajlar tətbiqində saxla.')).catch(()=>prompt('Bu mətni kopyala və saxla:',j));
+}
+function importD(){
+  const j=prompt('Əvvəl aldığın nüsxəni bura yapışdır (cari data əvəz olunacaq):');
+  if(!j)return;
+  try{const d=JSON.parse(j);if(!Array.isArray(d.acc)||!Array.isArray(d.tx))throw 0;S=d;save();render()}catch(e){alert('Nüsxə oxunmadı.')}
+}
+
+render();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
