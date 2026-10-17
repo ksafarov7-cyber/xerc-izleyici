@@ -32,6 +32,8 @@ h2 button{background:none;border:0;color:var(--ink);font:600 14px inherit;paddin
 .acc{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
 .acc:first-child{border-top:0}.acc .n{font-weight:600}.acc .t{font-size:12px;color:var(--mute)}
 .acc .b{font-weight:700;font-size:17px}.pos{color:var(--pos)}.neg{color:var(--neg)}
+.mv{display:flex;gap:6px}.mv button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--ink);font-size:16px}.mv button:disabled{opacity:.3}
+h2 span{display:flex;gap:16px}
 .empty{color:var(--mute);font-size:14px;padding:6px 0}
 .tx{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
 .tx:first-child{border-top:0}.tx .m{color:var(--mute);font-size:12px}.tx button{background:none;border:0;color:var(--mute);font-size:18px;padding:0 4px}
@@ -84,6 +86,9 @@ const total=l=>l.reduce((s,a)=>s+a.balance,0);
 function daysLeft(){const d=new Date();return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-d.getDate()+1}
 
 const isB=a=>a.kind==='b';
+let sortMode=false;
+function toggleSort(){sortMode=!sortMode;render()}
+function mv(id,d){const i=S.acc.findIndex(a=>a.id===id),j=i+d;if(j<0||j>=S.acc.length)return;[S.acc[i],S.acc[j]]=[S.acc[j],S.acc[i]];save();render()}
 function render(){
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   const pos=total(R.filter(a=>a.balance>0)),neg=total(R.filter(a=>a.balance<0)),bud=B.reduce((s,a)=>s+Math.max(0,a.balance),0);
@@ -97,8 +102,8 @@ function render(){
     dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
     h+=`</div>`;
   }
-  h+=`<h2>Hesablar <button onclick="openAcc()">+ Yeni</button></h2><div class="card">`;
-  h+=S.acc.map(a=>`<div class="acc" onclick="openEdit('${a.id}')"><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div><div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div></div>`).join('')
+  h+=`<h2>Hesablar <span>${S.acc.length>1?`<button onclick="toggleSort()">${sortMode?'Hazır':'Sırala'}</button>`:''}<button onclick="openAcc()">+ Yeni</button></span></h2><div class="card">`;
+  h+=S.acc.map((a,i)=>`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`).join('')
     ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div><h2>Son əməliyyatlar</h2><div class="card">`;
   h+=S.tx.slice(0,40).map(t=>`<div class="tx"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div><div style="display:flex;align-items:center"><span class="num ${t.sign==='+'?'pos':t.sign==='−'?'neg':''}">${fmt(t.amt)}</span><button onclick="delTx('${t.id}')" aria-label="Sil">×</button></div></div>`).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
