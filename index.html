@@ -40,7 +40,7 @@ h2 span{display:flex;gap:16px}
 .sum{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--mute)}.sum b{font-size:20px}
 .empty{color:var(--mute);font-size:14px;padding:6px 0}
 .tx{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
-.tx:first-child{border-top:0}.tx .m{color:var(--mute);font-size:12px}.tx button{background:none;border:0;color:var(--mute);font-size:18px;padding:0 4px}
+.tx{cursor:pointer}.tx:first-child{border-top:0}.tx .m{color:var(--mute);font-size:12px}.tx button{background:none;border:0;color:var(--mute);font-size:18px;padding:0 4px}
 .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);background:var(--acc);color:var(--onacc);border:0;border-radius:30px;padding:15px 30px;font:600 16px inherit;box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;z-index:9}
 .sheet[hidden]{display:none}
@@ -105,7 +105,7 @@ function quick(k){const n=new Date(),t=ymd(n);
   else if(k==='week'){const x=new Date(n);x.setDate(n.getDate()-((n.getDay()+6)%7));F.from=ymd(x);F.to=t}
   else{F.from=ymd(new Date(n.getFullYear(),n.getMonth(),1));F.to=t}
   render()}
-const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="tx"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${fmt(t.amt)}</span><button onclick="delTx('${t.id}')" aria-label="Sil">×</button></div></div>`};
+const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="tx" onclick="openTxEdit('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${fmt(t.amt)}</span></div></div>`};
 function renderTx(){
   const ds=t=>ymd(new Date(t.d));
   const l=S.tx.filter(t=>(F.type==='all'||txKind(t)===F.type)&&(F.cat==='all'||catOf(t)===F.cat)&&(!F.from||ds(t)>=F.from)&&(!F.to||ds(t)<=F.to));
@@ -253,35 +253,73 @@ function openOp(kind){
     h+=`<label>Haradan</label><select id="f-from">${opts(R)}</select><label>Hara</label><select id="f-to">${opts(R,R[1].id)}</select>
     <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00">
     <div class="note">Göndərən hesabda pul azdırsa, çatmayan hissə qırmızı qalıq kimi görünür. Kreditə ödəniş üçün də transferdən istifadə et.</div>`;}
-  h+=`<button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
+  h+=`<label>Tarix</label><input id="f-date" type="date" value="${ymd(new Date())}"><button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
   openS(h);
 }
 function post(label,sign,amt,deltas,x={}){
   for(const id in deltas){const a=A(id);if(a)a.balance=r2(a.balance+deltas[id])}
   S.tx.unshift({id:uid(),d:x.d||Date.now(),label,sign,amt,deltas,kind:x.kind,cat:x.cat,auto:x.auto,rid:x.rid});
-  if(!x.quiet){save();closeS();render()}
+  if(!x.quiet){S.tx.sort((p,q)=>q.d-p.d);save();closeS();render()}
 }
 function doOp(kind){
   const amt=num($('#f-amt').value);
   if(amt===null||amt<=0)return alert('Məbləği düzgün yaz.');
-  const note=$('#f-note')?$('#f-note').value.trim():'';
-  if(kind==='add'){const a=A($('#f-to').value);post(`${note||'Əlavə'} · ${a.name}`,'+',amt,{[a.id]:amt},{kind:'add'})}
+  const note=$('#f-note')?$('#f-note').value.trim():'',D=dateTs($('#f-date').value);
+  if(kind==='add'){const a=A($('#f-to').value);post(`${note||'Əlavə'} · ${a.name}`,'+',amt,{[a.id]:amt},{kind:'add',d:D})}
   if(kind==='spend'){
     const a=A($('#f-from').value),c=$('#f-cat').value?A($('#f-cat').value):null;
     const d={[a.id]:-amt};if(c)d[c.id]=-amt;
-    post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',amt,d,{kind:'spend',cat:$('#f-catg').value});
+    post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',amt,d,{kind:'spend',cat:$('#f-catg').value,d:D});
   }
   if(kind==='move'){
     const f=A($('#f-from').value),t=A($('#f-to').value);
     if(f.id===t.id)return alert('Fərqli hesablar seç.');
-    post(`${f.name} → ${t.name}`,'',amt,{[f.id]:-amt,[t.id]:amt},{kind:'move'});
+    post(`${f.name} → ${t.name}`,'',amt,{[f.id]:-amt,[t.id]:amt},{kind:'move',d:D});
   }
+}
+const dateTs=v=>{if(!v||v===ymd(new Date()))return Date.now();const[y,m,d]=v.split('-').map(Number);return new Date(y,m-1,d,12).getTime()};
+function txParts(t){
+  const ids=Object.keys(t.deltas).filter(k=>A(k)),k=txKind(t);
+  if(k==='add')return{to:ids[0]};
+  if(k==='spend')return{from:ids.find(i=>!isB(A(i))),bud:ids.find(i=>isB(A(i)))};
+  return{from:ids.find(i=>t.deltas[i]<0),to:ids.find(i=>t.deltas[i]>0)};
+}
+function openTxEdit(id){
+  const t=S.tx.find(x=>x.id===id),k=txKind(t),p=txParts(t);
+  const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
+  let h=`<h3>Əməliyyatı redaktə et</h3><label>Ad / qeyd</label><input id="e-label" value="${esc(t.label)}">
+  <label>Məbləğ</label><input id="e-amt" inputmode="decimal" value="${t.amt}">`;
+  if(k==='add')h+=`<label>Hesab</label><select id="e-to">${opts(S.acc,p.to)}</select>`;
+  if(k==='spend')h+=`<label>Hansı hesabdan</label><select id="e-from">${opts(R,p.from)}</select>
+    <label>Kateqoriya</label><select id="e-cat">${CATS.map(c=>`<option ${c===catOf(t)?'selected':''}>${c}</option>`).join('')}</select>
+    <label>Xərc büdcəsindən də çıx</label><select id="e-bud"><option value="">Yox</option>${opts(B,p.bud)}</select>`;
+  if(k==='move')h+=`<label>Haradan</label><select id="e-from">${opts(R,p.from)}</select><label>Hara</label><select id="e-to">${opts(R,p.to)}</select>`;
+  h+=`<label>Tarix</label><input id="e-date" type="date" value="${ymd(new Date(t.d))}">
+  <div class="note">Dəyişikliklər hesablara avtomatik tətbiq olunur.</div>
+  <button class="btn" onclick="saveTx('${id}')">Yadda saxla</button><button class="btn alt" onclick="delTx('${id}')">Sil</button>`;
+  openS(h);
+}
+function saveTx(id){
+  const t=S.tx.find(x=>x.id===id),k=txKind(t),amt=num($('#e-amt').value),label=$('#e-label').value.trim();
+  if(amt===null||amt<=0||!label)return alert('Ad və məbləği düzgün yaz.');
+  const g=x=>$(x)?$(x).value:'';
+  let nd;
+  if(k==='add')nd={[g('#e-to')]:amt};
+  else if(k==='spend'){nd={[g('#e-from')]:-amt};if(g('#e-bud'))nd[g('#e-bud')]=-amt}
+  else{if(g('#e-from')===g('#e-to'))return alert('Fərqli hesablar seç.');nd={[g('#e-from')]:-amt,[g('#e-to')]:amt}}
+  for(const x in t.deltas){const a=A(x);if(a)a.balance=r2(a.balance-t.deltas[x])}
+  for(const x in nd){const a=A(x);if(a)a.balance=r2(a.balance+nd[x])}
+  t.deltas=nd;t.amt=r2(amt);t.label=label;
+  if(k==='spend')t.cat=g('#e-cat');
+  const dv=g('#e-date');
+  if(dv&&dv!==ymd(new Date(t.d)))t.d=dateTs(dv);
+  S.tx.sort((x,y)=>y.d-x.d);save();closeS();render();
 }
 function delTx(id){
   if(!confirm('Əməliyyat silinsin və hesablar geri qaytarılsın?'))return;
   const t=S.tx.find(x=>x.id===id);
   for(const k in t.deltas){const a=A(k);if(a)a.balance=r2(a.balance-t.deltas[k])}
-  S.tx=S.tx.filter(x=>x.id!==id);save();render();
+  S.tx=S.tx.filter(x=>x.id!==id);save();closeS();render();
 }
 
 function exportD(){
