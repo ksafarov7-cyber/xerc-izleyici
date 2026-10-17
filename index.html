@@ -38,6 +38,8 @@ h2 span{display:flex;gap:16px}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.chips button{padding:8px 12px;border-radius:20px;border:1px solid var(--line);background:none;color:var(--ink);font-size:13px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wd{display:flex;flex-wrap:wrap;gap:0 14px}[hidden]{display:none!important}
 .sum{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--mute)}.sum b{font-size:20px}
+.ops{display:flex;gap:8px;margin-top:8px}.ops button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--ink);font-size:18px}
+.dayh{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--mute);font-weight:600;padding-bottom:6px}.dayh b{font-weight:700;font-size:14px}.dayh+.tx{border-top:0}
 .empty{color:var(--mute);font-size:14px;padding:6px 0}
 .tx{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
 .tx{cursor:pointer}.tx:first-child{border-top:0}.tx .m{color:var(--mute);font-size:12px}.tx button{background:none;border:0;color:var(--mute);font-size:18px;padding:0 4px}
@@ -63,7 +65,7 @@ input,select{width:100%;font:16px inherit;padding:12px;border-radius:12px;border
 </head>
 <body>
 <div id="app"></div>
-<button class="fab" onclick="openOp('add')">+ Əməliyyat</button>
+<button class="fab" onclick="openOp('spend')">+ Əməliyyat</button>
 <div class="sheet" id="sheet" hidden onclick="if(event.target===this)closeS()"><div class="box" id="box"></div></div>
 
 <script>
@@ -75,7 +77,15 @@ const r2=n=>Math.round(n*100)/100;
 // mənfi işarəsi göstərilmir: qırmızı rəng = xərc/borc
 const fmt=n=>r2(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' ₼';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const num=v=>{const n=parseFloat(String(v).replace(',','.').replace(/\s/g,''));return isNaN(n)?null:n};
+function evalExpr(v){
+  const e=String(v).replace(/,/g,'.').replace(/[×x*]/gi,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s/g,'');
+  if(!e||!/^[0-9+\-*/.()]+$/.test(e))return null;
+  try{const r=Function('"use strict";return ('+e+')')();return Number.isFinite(r)?Math.round(r*100)/100:null}catch(x){return null}
+}
+const num=evalExpr;
+function calc(el){const v=evalExpr(el.value);if(v!==null&&/[+*/×÷x−–]|.-/.test(el.value.trim()))el.value=v}
+function ins(id,o){const i=document.getElementById(id);i.value+=o;i.focus()}
+const amtF=(id,val,ph)=>`<input id="${id}" inputmode="decimal" autocomplete="off" value="${val}" placeholder="${ph||'0.00'}" onblur="calc(this)"><div class="ops">${['+','−','×','÷'].map(o=>`<button type="button" onclick="ins('${id}','${o}')">${o}</button>`).join('')}</div>`;
 function norm(d){
   d.rules=d.rules||[];if(d.v===2)return d;
   const ng=new Set(d.acc.filter(a=>a.type==='exp').map(a=>a.id));
@@ -106,6 +116,14 @@ function quick(k){const n=new Date(),t=ymd(n);
   else{F.from=ymd(new Date(n.getFullYear(),n.getMonth(),1));F.to=t}
   render()}
 const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="tx" onclick="openTxEdit('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${fmt(t.amt)}</span></div></div>`};
+function dayGroups(l){
+  if(!l.length)return '<div class="card"><div class="empty">Bu filtrə uyğun əməliyyat yoxdur.</div></div>';
+  const g=[];[...l].sort((a,b)=>b.d-a.d).slice(0,300).forEach(t=>{const k=ymd(new Date(t.d));let x=g[g.length-1];if(!x||x.k!==k){x={k,l:[]};g.push(x)}x.l.push(t)});
+  return g.map(x=>{
+    const n=r2(x.l.reduce((s,t)=>{const k=txKind(t);return s+(k==='add'?t.amt:k==='spend'?-t.amt:0)},0)),[y,m,d]=x.k.split('-');
+    const tag=n<0?`<b class="num neg">Xərclənib ${fmt(n)}</b>`:n>0?`<b class="num pos">Gəlir ${fmt(n)}</b>`:'';
+    return `<div class="card"><div class="dayh"><span>${d}.${m}.${y}</span>${tag}</div>${x.l.map(txRow).join('')}</div>`}).join('');
+}
 function renderTx(){
   const ds=t=>ymd(new Date(t.d));
   const l=S.tx.filter(t=>(F.type==='all'||txKind(t)===F.type)&&(F.cat==='all'||catOf(t)===F.cat)&&(!F.from||ds(t)>=F.from)&&(!F.to||ds(t)<=F.to));
@@ -116,7 +134,7 @@ function renderTx(){
   <div class="two"><div><label>Başlanğıc tarix</label><input type="date" value="${F.from}" onchange="setF('from',this.value)"></div><div><label>Son tarix</label><input type="date" value="${F.to}" onchange="setF('to',this.value)"></div></div>
   <div class="chips"><button onclick="quick('today')">Bu gün</button><button onclick="quick('week')">Bu həftə</button><button onclick="quick('month')">Bu ay</button><button onclick="clearF()">Təmizlə</button></div></div>
   <div class="card sum"><span>${l.length} əməliyyat</span><span>Xərc cəmi <b class="num ${sp?'neg':''}">${fmt(sp)}</b></span></div>
-  <div class="card">${l.slice(0,300).map(txRow).join('')||'<div class="empty">Bu filtrə uyğun əməliyyat yoxdur.</div>'}</div>`;
+  ${dayGroups(l)}`;
 }
 function sched(r){return r.freq==='daily'?'hər gün':r.freq==='weekly'?'həftədə: '+WD.filter(w=>r.days.includes(w[1])).map(w=>w[0]).join(', '):'hər ayın '+r.dom+'-i'}
 const rulesHtml=()=>`<h2>Avtomatik xərclər <button onclick="openRule()">+ Yeni</button></h2><div class="card">`+(S.rules.map(r=>`<div class="acc" onclick="openRuleEdit('${r.id}')"><div><div class="n">${esc(r.name)}</div><div class="t">${sched(r)} · ${esc(r.cat)}</div></div><div class="b num neg">${fmt(r.amt)}</div></div>`).join('')||`<div class="empty">Məsələn: hər gün Transport 2.40 ₼.</div>`)+`</div>`;
@@ -125,7 +143,7 @@ function openRule(){
   if(!R.length)return alert('Əvvəlcə pul hesabı yarat.');
   openS(`<h3>Yeni avtomatik xərc</h3>
   <label>Ad</label><input id="r-name" placeholder="Məs: Avtobus">
-  <label>Məbləğ</label><input id="r-amt" inputmode="decimal" placeholder="2.40">
+  <label>Məbləğ</label>${amtF('r-amt','','2.40')}
   <label>Kateqoriya</label><select id="r-cat">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
   <label>Hansı hesabdan</label><select id="r-acc">${opts(R)}</select>
   <label>Xərc büdcəsindən də çıx</label><select id="r-bud"><option value="">Yox</option>${opts(B,(B[0]||{}).id)}</select>
@@ -205,7 +223,7 @@ const kindSel=k=>`<label>Hesabın növü</label><select id="f-kind"><option valu
 function openAcc(){
   openS(`<h3>Yeni hesab</h3>
   <label>Ad</label><input id="f-name" placeholder="Nağd, ABB debet kart, Aylıq xərc">
-  <label>Məbləğ</label><input id="f-bal" inputmode="decimal" placeholder="0.00">${kindSel('p')}
+  <label>Məbləğ</label>${amtF('f-bal','')}${kindSel('p')}
   <label class="chk"><input type="checkbox" id="f-daily"> Gündəlik limit göstər (büdcə üçün həmişə göstərilir)</label>
   <button class="btn" onclick="saveAcc()">Yarat</button>`);
 }
@@ -222,7 +240,7 @@ function saveAcc(){
 function openEdit(id){
   const a=A(id);
   openS(`<h3>${esc(a.name)}</h3><label>Ad</label><input id="f-name" value="${esc(a.name)}">
-  <label>Cari məbləğ</label><input id="f-bal" inputmode="decimal" value="${Math.abs(a.balance)}">${kindSel(kindOf(a))}
+  <label>Cari məbləğ</label>${amtF('f-bal',Math.abs(a.balance))}${kindSel(kindOf(a))}
   <label class="chk"><input type="checkbox" id="f-daily" ${a.daily?'checked':''}> Gündəlik limit göstər (büdcə üçün həmişə göstərilir)</label>
   <button class="btn" onclick="saveEdit('${id}')">Yadda saxla</button>
   <button class="btn alt" onclick="delAcc('${id}')">Hesabı sil</button>`);
@@ -236,22 +254,22 @@ function delAcc(id){if(!confirm('Bu hesab silinsin?'))return;S.acc=S.acc.filter(
 function openOp(kind){
   if(!S.acc.length)return alert('Əvvəlcə hesab yarat.');
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
-  const T=[['add','Əlavə et'],['spend','Xərc'],['move','Transfer']];
+  const T=[['spend','Xərc'],['add','Əlavə et'],['move','Transfer']];
   let h=`<div class="tabs">${T.map(t=>`<button class="${t[0]===kind?'on':''}" onclick="openOp('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
   if(kind==='add')h+=`<label>Hansı hesaba</label><select id="f-to">${opts(S.acc)}</select>
-    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00"><label>Qeyd (istəyə bağlı)</label><input id="f-note">
+    <label>Məbləğ</label>${amtF('f-amt','')}<label>Qeyd (istəyə bağlı)</label><input id="f-note">
     <div class="note">Xərc büdcəsinə əlavə etsən, həmin məbləğ ümumi puldan çıxılır və gündəlik limit artır.</div>`;
   if(kind==='spend'){
     if(!R.length)return alert('Xərc etmək üçün pul hesabı lazımdır.');
     h+=`<label>Hansı hesabdan</label><select id="f-from">${opts(R)}</select>
     <label>Kateqoriya</label><select id="f-catg">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
     <label>Xərc büdcəsindən də çıx</label><select id="f-cat"><option value="">Yox</option>${opts(B,(B[0]||{}).id)}</select>
-    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00"><label>Qeyd (istəyə bağlı)</label><input id="f-note">
+    <label>Məbləğ</label>${amtF('f-amt','')}<label>Qeyd (istəyə bağlı)</label><input id="f-note">
     <div class="note">Büdcə seçsən (məs. Aylıq xərc), məbləğ ondan da azalır. Hesabda pul çatmasa, qalıq qırmızı olur.</div>`;}
   if(kind==='move'){
     if(R.length<2)return alert('Transfer üçün ən azı iki hesab lazımdır (büdcə hesabları transferdə iştirak etmir).');
     h+=`<label>Haradan</label><select id="f-from">${opts(R)}</select><label>Hara</label><select id="f-to">${opts(R,R[1].id)}</select>
-    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00">
+    <label>Məbləğ</label>${amtF('f-amt','')}
     <div class="note">Göndərən hesabda pul azdırsa, çatmayan hissə qırmızı qalıq kimi görünür. Kreditə ödəniş üçün də transferdən istifadə et.</div>`;}
   h+=`<label>Tarix</label><input id="f-date" type="date" value="${ymd(new Date())}"><button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
   openS(h);
@@ -288,7 +306,7 @@ function openTxEdit(id){
   const t=S.tx.find(x=>x.id===id),k=txKind(t),p=txParts(t);
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   let h=`<h3>Əməliyyatı redaktə et</h3><label>Ad / qeyd</label><input id="e-label" value="${esc(t.label)}">
-  <label>Məbləğ</label><input id="e-amt" inputmode="decimal" value="${t.amt}">`;
+  <label>Məbləğ</label>${amtF('e-amt',t.amt)}`;
   if(k==='add')h+=`<label>Hesab</label><select id="e-to">${opts(S.acc,p.to)}</select>`;
   if(k==='spend')h+=`<label>Hansı hesabdan</label><select id="e-from">${opts(R,p.from)}</select>
     <label>Kateqoriya</label><select id="e-cat">${CATS.map(c=>`<option ${c===catOf(t)?'selected':''}>${c}</option>`).join('')}</select>
