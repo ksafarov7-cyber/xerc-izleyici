@@ -21,7 +21,7 @@ body{padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-i
 .hero{padding:8px 4px 20px}
 .hero small{color:var(--mute);font-size:14px}
 .hero .big{font-size:46px;font-weight:700;line-height:1.1;margin:2px 0 10px}
-.hero .sub{display:flex;gap:18px;font-size:14px;color:var(--mute)}
+.hero .sub{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--mute)}
 .hero .sub b{display:block;color:var(--ink);font-size:16px;font-weight:600}
 .card{background:var(--card);border-radius:16px;padding:14px 16px;margin-bottom:12px;border:1px solid var(--line)}
 .daily h3{margin:0 0 2px;font-size:15px}.daily p{margin:0 0 10px;color:var(--mute);font-size:13px}
@@ -83,20 +83,23 @@ const A=id=>S.acc.find(a=>a.id===id);
 const total=l=>l.reduce((s,a)=>s+a.balance,0);
 function daysLeft(){const d=new Date();return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-d.getDate()+1}
 
+const isB=a=>a.kind==='b';
 function render(){
-  const pos=total(S.acc.filter(a=>a.balance>0)),neg=total(S.acc.filter(a=>a.balance<0)),net=pos+neg,dl=daysLeft();
-  const dailyAccs=S.acc.filter(a=>a.daily);
+  const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
+  const pos=total(R.filter(a=>a.balance>0)),neg=total(R.filter(a=>a.balance<0)),bud=B.reduce((s,a)=>s+Math.max(0,a.balance),0);
+  const net=pos+neg-bud,dl=daysLeft();
+  const dailyAccs=S.acc.filter(a=>isB(a)||a.daily);
   let h=`<div class="hero"><small>Hazırda sənin pulun</small>
   <div class="big num ${net<0?'neg':''}">${fmt(net)}</div>
-  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div><div>Xərclər (borc)<b class="num ${neg<0?'neg':''}">${fmt(neg)}</b></div></div></div>`;
+  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num">${fmt(bud)}</b></div>`:''}</div></div>`;
   if(dailyAccs.length){
     h+=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><p>Bu gün də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
-    dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(pul yoxdur)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
+    dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
     h+=`</div>`;
   }
   h+=`<h2>Hesablar <button onclick="openAcc()">+ Yeni</button></h2><div class="card">`;
-  h+=S.acc.map(a=>`<div class="acc" onclick="openEdit('${a.id}')"><div><div class="n">${esc(a.name)}</div>${a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div><div class="b num ${a.balance<0?'neg':''}">${fmt(a.balance)}</div></div>`).join('')
-    ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit.</div>`;
+  h+=S.acc.map(a=>`<div class="acc" onclick="openEdit('${a.id}')"><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div><div class="b num ${a.balance<0?'neg':''}">${fmt(a.balance)}</div></div>`).join('')
+    ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div><h2>Son əməliyyatlar</h2><div class="card">`;
   h+=S.tx.slice(0,40).map(t=>`<div class="tx"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div><div style="display:flex;align-items:center"><span class="num ${t.sign==='+'?'pos':t.sign==='−'?'neg':''}">${fmt(t.amt)}</span><button onclick="delTx('${t.id}')" aria-label="Sil">×</button></div></div>`).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
   h+=`</div><div class="foot"><button onclick="exportD()">Nüsxə al</button><button onclick="importD()">Nüsxəni yüklə</button></div>`;
@@ -105,20 +108,23 @@ function render(){
 
 function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
 function closeS(){$('#sheet').hidden=true}
-const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${a.balance<0?'borc ':''}${fmt(a.balance)})</option>`).join('');
-const kindSel=neg=>`<label>Məbləğ növü</label><select id="f-kind"><option value="p" ${neg?'':'selected'}>Pulum var</option><option value="n" ${neg?'selected':''}>Xərc / borc (qırmızı)</option></select>`;
+const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə ':a.balance<0?'borc ':''}${fmt(a.balance)})</option>`).join('');
+const kindOf=a=>isB(a)?'b':a.balance<0?'n':'p';
+const kindSel=k=>`<label>Hesabın növü</label><select id="f-kind"><option value="p" ${k==='p'?'selected':''}>Pulum var</option><option value="n" ${k==='n'?'selected':''}>Borc / xərc (qırmızı)</option><option value="b" ${k==='b'?'selected':''}>Xərc büdcəsi (ümumi puldan çıxılır)</option></select>
+<div class="note">Xərc büdcəsi: ay üçün xərcə ayırdığın məbləğ. Ümumi puldan çıxılır və gündəlik limit avtomatik hesablanır.</div>`;
 
 function openAcc(){
   openS(`<h3>Yeni hesab</h3>
-  <label>Ad</label><input id="f-name" placeholder="Nağd, ABB debet kart, Kredit">
-  <label>Məbləğ</label><input id="f-bal" inputmode="decimal" placeholder="0.00">${kindSel(false)}
-  <label class="chk"><input type="checkbox" id="f-daily"> Ayın sonuna qədər gündəlik limit göstər</label>
+  <label>Ad</label><input id="f-name" placeholder="Nağd, ABB debet kart, Aylıq xərc">
+  <label>Məbləğ</label><input id="f-bal" inputmode="decimal" placeholder="0.00">${kindSel('p')}
+  <label class="chk"><input type="checkbox" id="f-daily"> Gündəlik limit göstər (büdcə üçün həmişə göstərilir)</label>
   <button class="btn" onclick="saveAcc()">Yarat</button>`);
 }
 function readAcc(){
   const name=$('#f-name').value.trim(),b=num($('#f-bal').value||0);
   if(!name||b===null)return null;
-  return{name,balance:r2($('#f-kind').value==='n'?-Math.abs(b):Math.abs(b)),daily:$('#f-daily').checked};
+  const k=$('#f-kind').value;
+  return{name,balance:r2(k==='n'?-Math.abs(b):Math.abs(b)),daily:$('#f-daily').checked,kind:k==='b'?'b':undefined};
 }
 function saveAcc(){
   const d=readAcc();if(!d)return alert('Ad və məbləği düzgün yaz.');
@@ -127,8 +133,8 @@ function saveAcc(){
 function openEdit(id){
   const a=A(id);
   openS(`<h3>${esc(a.name)}</h3><label>Ad</label><input id="f-name" value="${esc(a.name)}">
-  <label>Cari məbləğ</label><input id="f-bal" inputmode="decimal" value="${Math.abs(a.balance)}">${kindSel(a.balance<0)}
-  <label class="chk"><input type="checkbox" id="f-daily" ${a.daily?'checked':''}> Gündəlik limit göstər</label>
+  <label>Cari məbləğ</label><input id="f-bal" inputmode="decimal" value="${Math.abs(a.balance)}">${kindSel(kindOf(a))}
+  <label class="chk"><input type="checkbox" id="f-daily" ${a.daily?'checked':''}> Gündəlik limit göstər (büdcə üçün həmişə göstərilir)</label>
   <button class="btn" onclick="saveEdit('${id}')">Yadda saxla</button>
   <button class="btn alt" onclick="delAcc('${id}')">Hesabı sil</button>`);
 }
@@ -140,16 +146,23 @@ function delAcc(id){if(!confirm('Bu hesab silinsin?'))return;S.acc=S.acc.filter(
 
 function openOp(kind){
   if(!S.acc.length)return alert('Əvvəlcə hesab yarat.');
+  const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   const T=[['add','Əlavə et'],['spend','Xərc'],['move','Transfer']];
   let h=`<div class="tabs">${T.map(t=>`<button class="${t[0]===kind?'on':''}" onclick="openOp('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
   if(kind==='add')h+=`<label>Hansı hesaba</label><select id="f-to">${opts(S.acc)}</select>
-    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00"><label>Qeyd (istəyə bağlı)</label><input id="f-note">`;
-  if(kind==='spend')h+=`<label>Hansı hesabdan</label><select id="f-from">${opts(S.acc)}</select>
     <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00"><label>Qeyd (istəyə bağlı)</label><input id="f-note">
-    <div class="note">Hesabda pul çatmasa, qalıq qırmızı olur (xərc/borc kimi).</div>`;
-  if(kind==='move')h+=`<label>Haradan</label><select id="f-from">${opts(S.acc)}</select><label>Hara</label><select id="f-to">${opts(S.acc,(S.acc[1]||{}).id)}</select>
+    <div class="note">Xərc büdcəsinə əlavə etsən, həmin məbləğ ümumi puldan çıxılır və gündəlik limit artır.</div>`;
+  if(kind==='spend'){
+    if(!R.length)return alert('Xərc etmək üçün pul hesabı lazımdır.');
+    h+=`<label>Hansı hesabdan</label><select id="f-from">${opts(R)}</select>
+    <label>Xərc büdcəsindən də çıx</label><select id="f-cat"><option value="">Yox</option>${opts(B,(B[0]||{}).id)}</select>
+    <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00"><label>Qeyd (istəyə bağlı)</label><input id="f-note">
+    <div class="note">Büdcə seçsən (məs. Aylıq xərc), məbləğ ondan da azalır. Hesabda pul çatmasa, qalıq qırmızı olur.</div>`;}
+  if(kind==='move'){
+    if(R.length<2)return alert('Transfer üçün ən azı iki hesab lazımdır (büdcə hesabları transferdə iştirak etmir).');
+    h+=`<label>Haradan</label><select id="f-from">${opts(R)}</select><label>Hara</label><select id="f-to">${opts(R,R[1].id)}</select>
     <label>Məbləğ</label><input id="f-amt" inputmode="decimal" placeholder="0.00">
-    <div class="note">Göndərən hesabda pul azdırsa, çatmayan hissə qırmızı qalıq kimi görünür. Kreditə ödəniş üçün də transferdən istifadə et.</div>`;
+    <div class="note">Göndərən hesabda pul azdırsa, çatmayan hissə qırmızı qalıq kimi görünür. Kreditə ödəniş üçün də transferdən istifadə et.</div>`;}
   h+=`<button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
   openS(h);
 }
@@ -162,7 +175,11 @@ function doOp(kind){
   if(amt===null||amt<=0)return alert('Məbləği düzgün yaz.');
   const note=$('#f-note')?$('#f-note').value.trim():'';
   if(kind==='add'){const a=A($('#f-to').value);post(`${note||'Əlavə'} · ${a.name}`,'+',amt,{[a.id]:amt})}
-  if(kind==='spend'){const a=A($('#f-from').value);post(`${note||'Xərc'} · ${a.name}`,'−',amt,{[a.id]:-amt})}
+  if(kind==='spend'){
+    const a=A($('#f-from').value),c=$('#f-cat').value?A($('#f-cat').value):null;
+    const d={[a.id]:-amt};if(c)d[c.id]=-amt;
+    post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',amt,d);
+  }
   if(kind==='move'){
     const f=A($('#f-from').value),t=A($('#f-to').value);
     if(f.id===t.id)return alert('Fərqli hesablar seç.');
