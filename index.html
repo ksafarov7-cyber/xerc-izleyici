@@ -91,14 +91,14 @@ function render(){
   const dailyAccs=S.acc.filter(a=>isB(a)||a.daily);
   let h=`<div class="hero"><small>Hazırda sənin pulun</small>
   <div class="big num ${net<0?'neg':''}">${fmt(net)}</div>
-  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num">${fmt(bud)}</b></div>`:''}</div></div>`;
+  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div></div>`;
   if(dailyAccs.length){
     h+=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><p>Bu gün də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
     dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
     h+=`</div>`;
   }
   h+=`<h2>Hesablar <button onclick="openAcc()">+ Yeni</button></h2><div class="card">`;
-  h+=S.acc.map(a=>`<div class="acc" onclick="openEdit('${a.id}')"><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div><div class="b num ${a.balance<0?'neg':''}">${fmt(a.balance)}</div></div>`).join('')
+  h+=S.acc.map(a=>`<div class="acc" onclick="openEdit('${a.id}')"><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div><div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div></div>`).join('')
     ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div><h2>Son əməliyyatlar</h2><div class="card">`;
   h+=S.tx.slice(0,40).map(t=>`<div class="tx"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div><div style="display:flex;align-items:center"><span class="num ${t.sign==='+'?'pos':t.sign==='−'?'neg':''}">${fmt(t.amt)}</span><button onclick="delTx('${t.id}')" aria-label="Sil">×</button></div></div>`).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
