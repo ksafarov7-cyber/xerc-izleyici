@@ -106,7 +106,7 @@ function calc(el){const v=evalExpr(el.value);if(v!==null&&/[+*/×÷x−–]|.-/.
 function ins(id,o){const i=document.getElementById(id);i.value+=o;i.focus()}
 const amtF=(id,val,ph)=>`<input id="${id}" inputmode="decimal" autocomplete="off" value="${val}" placeholder="${ph||'0.00'}" onblur="calc(this)"><div class="ops">${['+','−','×','÷'].map(o=>`<button type="button" onclick="ins('${id}','${o}')">${o}</button>`).join('')}</div>`;
 function norm(d){
-  d.rules=d.rules||[];d.tpls=d.tpls||[];d.cats=d.cats||['Transport','Yemək və içmək','Ev','Geyim','Digər'];if(d.v===2)return d;
+  d.rules=d.rules||[];d.tpls=d.tpls||[];d.last=d.last||{};d.cats=d.cats||['Transport','Yemək və içmək','Ev','Geyim','Digər'];if(d.v===2)return d;
   const ng=new Set(d.acc.filter(a=>a.type==='exp').map(a=>a.id));
   d.acc.forEach(a=>{if(ng.has(a.id))a.balance=-a.balance;delete a.type});
   d.tx.forEach(t=>{for(const k in t.deltas)if(ng.has(k))t.deltas[k]=-t.deltas[k]});
@@ -437,20 +437,47 @@ function toast(m,id){
 }
 function undoTx(id){clearTimeout(tT);$('#toast').hidden=true;rmTx(id)}
 
+// ---- Formada yadda saxlama: son hesab/kateqoriya/büdcə + qeydə görə kateqoriya
+let NM=[];
+const noteOf=t=>String(t.label).split(' · ')[0].trim();
+function buildNotes(){
+  const seen=new Set();NM=[];
+  [...S.tx].sort((a,b)=>b.d-a.d).forEach(t=>{
+    if(txKind(t)!=='spend')return;
+    const raw=noteOf(t),n=fold(raw).trim();
+    if(!n||raw==='Xərc'||seen.has(n))return;
+    seen.add(n);NM.push({n,raw,cat:catOf(t)});
+  });
+}
+function noteCat(v){
+  const q=fold(v).trim();if(!q)return null;
+  let m=NM.find(x=>x.n===q);if(!m&&q.length>=3)m=NM.find(x=>x.n.startsWith(q));
+  return m?m.cat:null;
+}
+function onNote(el){
+  const sel=$('#f-catg');if(!sel||sel.dataset.m)return;
+  const c=noteCat(el.value);
+  if(c&&c!==sel.value&&[...sel.options].some(o=>o.value===c)){sel.value=c;$('#f-hint').hidden=false}
+}
+function onCatManual(el){el.dataset.m=1;$('#f-hint').hidden=true}
+
 function openOp(kind){
   if(!S.acc.length)return alert('Əvvəlcə hesab yarat.');
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   const T=[['spend','Xərc'],['add','Əlavə et'],['move','Transfer']];
   let h=`<div class="tabs">${T.map(t=>`<button class="${t[0]===kind?'on':''}" onclick="openOp('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-  if(kind==='add')h+=`<label>Hansı hesaba</label><select id="f-to">${opts(S.acc)}</select>
+  if(kind==='add')h+=`<label>Hansı hesaba</label><select id="f-to">${opts(S.acc,S.last.to)}</select>
     <label>Məbləğ</label>${amtF('f-amt','')}<label>Qeyd (istəyə bağlı)</label><input id="f-note">
     <div class="note">Xərc büdcəsinə əlavə etsən, həmin məbləğ ümumi puldan çıxılır və gündəlik limit artır.</div>`;
   if(kind==='spend'){
     if(!R.length)return alert('Xərc etmək üçün pul hesabı lazımdır.');
-    h+=`<label>Hansı hesabdan</label><select id="f-from">${opts(R)}</select>
-    <label>Kateqoriya</label><select id="f-catg">${S.cats.map(c=>`<option>${c}</option>`).join('')}</select>
-    <label>Xərc büdcəsindən də çıx</label><select id="f-cat"><option value="">Yox</option>${opts(B,(B[0]||{}).id)}</select>
-    <label>Məbləğ</label>${amtF('f-amt','')}<label>Qeyd (istəyə bağlı)</label><input id="f-note">
+    buildNotes();
+    const L=S.last,bs=B.some(a=>a.id===L.bud)?L.bud:L.bud===''?'':(B[0]||{}).id;
+    h+=`<label>Hansı hesabdan</label><select id="f-from">${opts(R,L.from)}</select>
+    <label>Kateqoriya</label><select id="f-catg" onchange="onCatManual(this)">${S.cats.map(c=>`<option ${c===L.cat?'selected':''}>${c}</option>`).join('')}</select>
+    <div class="note" id="f-hint" hidden>Kateqoriya əvvəlki eyni qeydə görə seçildi.</div>
+    <label>Xərc büdcəsindən də çıx</label><select id="f-cat"><option value="">Yox</option>${opts(B,bs)}</select>
+    <label>Məbləğ</label>${amtF('f-amt','')}<label>Qeyd (istəyə bağlı)</label><input id="f-note" list="f-notes" autocomplete="off" oninput="onNote(this)" onchange="onNote(this)"><datalist id="f-notes">${NM.slice(0,40).map(x=>`<option value="${esc(x.raw)}">`).join('')}</datalist>
     <label class="chk"><input type="checkbox" id="f-tpl"> Tez əlavə üçün şablon kimi saxla</label>
     <div class="note">Büdcə seçsən (məs. Aylıq xərc), məbləğ ondan da azalır. Hesabda pul çatmasa, qalıq qırmızı olur.</div>`;}
   if(kind==='move'){
@@ -471,10 +498,11 @@ function doOp(kind){
   const amt=num($('#f-amt').value);
   if(amt===null||amt<=0)return alert('Məbləği düzgün yaz.');
   const note=$('#f-note')?$('#f-note').value.trim():'',D=dateTs($('#f-date').value);
-  if(kind==='add'){const a=A($('#f-to').value);post(`${note||'Əlavə'} · ${a.name}`,'+',amt,{[a.id]:amt},{kind:'add',d:D})}
+  if(kind==='add'){const a=A($('#f-to').value);S.last={...S.last,to:a.id};post(`${note||'Əlavə'} · ${a.name}`,'+',amt,{[a.id]:amt},{kind:'add',d:D})}
   if(kind==='spend'){
     const a=A($('#f-from').value),c=$('#f-cat').value?A($('#f-cat').value):null;
     const d={[a.id]:-amt};if(c)d[c.id]=-amt;
+    S.last={...S.last,from:a.id,cat:$('#f-catg').value,bud:c?c.id:''};
     if($('#f-tpl').checked)S.tpls.push({id:uid(),name:note||$('#f-catg').value,amt,cat:$('#f-catg').value,acc:a.id,bud:c?c.id:''});
     post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',amt,d,{kind:'spend',cat:$('#f-catg').value,d:D});
   }
