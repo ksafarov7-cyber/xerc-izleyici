@@ -80,6 +80,7 @@ body{overflow-x:clip}
 .box{overscroll-behavior:contain}.box::before{content:"";display:block;width:38px;height:4px;border-radius:2px;background:var(--line);margin:-8px auto 14px}
 .warn{position:fixed;top:0;left:0;right:0;z-index:40;background:var(--neg);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 8px) 14px 8px;display:flex;gap:12px;align-items:center;justify-content:space-between;font-size:13px}
 .warn button{background:#fff;color:var(--neg);border:0;border-radius:10px;padding:7px 12px;font:700 13px inherit;flex:none}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.trio small{display:block;color:var(--mute);font-size:12px}.trio b{display:block;font-size:17px;margin-top:2px}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
 </style>
 </head>
@@ -100,6 +101,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const r2=n=>Math.round(n*100)/100;
 // mənfi işarəsi göstərilmir: qırmızı rəng = xərc/borc
 const fmt=n=>r2(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' ₼';
+const fmt0=n=>Math.round(Math.abs(n)).toLocaleString('en-US').replace(/,/g,' ')+' ₼';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function evalExpr(v){
   const e=String(v).replace(/,/g,'.').replace(/[×x*]/gi,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s/g,'');
@@ -110,8 +112,9 @@ const num=evalExpr;
 function calc(el){const v=evalExpr(el.value);if(v!==null&&/[+*/×÷x−–]|.-/.test(el.value.trim()))el.value=v}
 function ins(id,o){const i=document.getElementById(id);i.value+=o;i.focus()}
 const amtF=(id,val,ph)=>`<input id="${id}" inputmode="decimal" autocomplete="off" value="${val}" placeholder="${ph||'0.00'}" onblur="calc(this)"><div class="ops">${['+','−','×','÷'].map(o=>`<button type="button" onclick="ins('${id}','${o}')">${o}</button>`).join('')}</div>`;
+function fixMoves(d){(d.tx||[]).forEach(t=>{const mv=t.kind?t.kind==='move':(t.sign!=='+'&&t.sign!=='−');if(mv&&t.note===undefined){t.note='';if(!String(t.label).startsWith('Transfer · '))t.label='Transfer · '+t.label}})}
 function norm(d){
-  d.rules=d.rules||[];d.tpls=d.tpls||[];d.last=d.last||{};d.cats=d.cats||['Transport','Yemək və içmək','Ev','Geyim','Digər'];if(d.v===2)return d;
+  fixMoves(d);d.rules=d.rules||[];d.tpls=d.tpls||[];d.last=d.last||{};d.cats=d.cats||['Transport','Yemək və içmək','Ev','Geyim','Digər'];if(d.v===2)return d;
   const ng=new Set(d.acc.filter(a=>a.type==='exp').map(a=>a.id));
   d.acc.forEach(a=>{if(ng.has(a.id))a.balance=-a.balance;delete a.type});
   d.tx.forEach(t=>{for(const k in t.deltas)if(ng.has(k))t.deltas[k]=-t.deltas[k]});
@@ -124,7 +127,7 @@ const total=l=>l.reduce((s,a)=>s+a.balance,0);
 function daysLeft(){const d=new Date();return new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-d.getDate()+1}
 
 const isB=a=>a.kind==='b';
-let sortMode=false,tplEd=false,view='home',F={type:'all',cat:'all',from:'',to:'',q:''};
+let sortMode=false,tplEd=false,txLim=300,view='home',F={type:'all',cat:'all',from:'',to:'',q:''};
 const WD=[['B.e',1],['Ç.a',2],['Çər',3],['C.a',4],['Cüm',5],['Şən',6],['Baz',0]];
 const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const txKind=t=>t.kind||(t.sign==='+'?'add':t.sign==='−'?'spend':'move');
@@ -133,17 +136,18 @@ const seg=()=>`<div class="seg">${[['home','Ana səhifə'],['tx','Əməliyyatlar
 const VW=['home','tx','stat','set'];
 function anim(d){if(!d)return;const a=$('#app');a.classList.remove('sl','sr');void a.offsetWidth;a.classList.add(d>0?'sl':'sr');try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}}
 function setView(v){const d=VW.indexOf(v)-VW.indexOf(view);view=v;render();scrollTo(0,0);anim(d)}
-function setF(k,v){F[k]=v;render()}
-function clearF(){F={type:'all',cat:'all',from:'',to:'',q:''};render()}
+function setF(k,v){F[k]=v;txLim=300;render()}
+function moreTx(){txLim+=300;$('#txres').innerHTML=txList()}
+function clearF(){F={type:'all',cat:'all',from:'',to:'',q:''};txLim=300;render()}
 function quick(k){const n=new Date(),t=ymd(n);
   if(k==='today')F.from=F.to=t;
   else if(k==='week'){const x=new Date(n);x.setDate(n.getDate()-((n.getDay()+6)%7));F.from=ymd(x);F.to=t}
   else{F.from=ymd(new Date(n.getFullYear(),n.getMonth(),1));F.to=t}
-  render()}
+  txLim=300;render()}
 const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="tx" onclick="openTxEdit('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${k==='add'?'+':''}${fmt(t.amt)}</span></div></div>`};
-function dayGroups(l){
+function dayGroups(l,lim=300){
   if(!l.length)return '<div class="card"><div class="empty">Bu filtrə uyğun əməliyyat yoxdur.</div></div>';
-  const g=[];[...l].sort((a,b)=>b.d-a.d).slice(0,300).forEach(t=>{const k=ymd(new Date(t.d));let x=g[g.length-1];if(!x||x.k!==k){x={k,l:[]};g.push(x)}x.l.push(t)});
+  const g=[];[...l].sort((a,b)=>b.d-a.d).slice(0,lim).forEach(t=>{const k=ymd(new Date(t.d));let x=g[g.length-1];if(!x||x.k!==k){x={k,l:[]};g.push(x)}x.l.push(t)});
   return g.map(x=>{
     const n=r2(x.l.reduce((s,t)=>{const k=txKind(t);return s+(k==='add'?t.amt:k==='spend'?-t.amt:0)},0)),[y,m,d]=x.k.split('-');
     const tag=n<0?`<b class="num neg">Xərclənib ${fmt(n)}</b>`:n>0?`<b class="num pos">Gəlir ${fmt(n)}</b>`:'';
@@ -163,9 +167,9 @@ function txList(){
   const ds=t=>ymd(new Date(t.d));
   const l=S.tx.filter(t=>(F.type==='all'||txKind(t)===F.type)&&(F.cat==='all'||catOf(t)===F.cat)&&(!F.from||ds(t)>=F.from)&&(!F.to||ds(t)<=F.to)&&(!F.q||matchQ(t,F.q)));
   const sp=l.filter(t=>txKind(t)==='spend').reduce((a,t)=>a+t.amt,0);
-  return `<div class="card sum"><span>${l.length} əməliyyat</span><span>Xərc cəmi <b class="num ${sp?'neg':''}">${fmt(sp)}</b></span></div>${dayGroups(l)}`;
+  return `<div class="card sum"><span>${l.length} əməliyyat</span><span>Xərc cəmi <b class="num ${sp?'neg':''}">${fmt(sp)}</b></span></div>${dayGroups(l,txLim)}${l.length>txLim?`<button class="btn alt" onclick="moreTx()">Daha çox göstər · ${l.length-txLim} qalıb</button>`:''}`;
 }
-function updTx(v){F.q=v;$('#txres').innerHTML=txList();$('#qx').hidden=!v}
+function updTx(v){F.q=v;txLim=300;$('#txres').innerHTML=txList();$('#qx').hidden=!v}
 function clearQ(){const i=$('#q');i.value='';updTx('');i.focus()}
 function renderTx(){
   const so=(v,c,txt)=>`<option value="${v}" ${c===v?'selected':''}>${txt}</option>`;
@@ -234,6 +238,22 @@ function cmpHtml(r,pr,cur,prev,col){
   <div class="leg"><span><i></i>${esc(nm[0])}</span><span><i class="p"></i>${esc(nm[1])}</span></div>
   ${crow('Cəmi',tot,ptot,'var(--ink)')}${names.map(x=>crow(x[0],x[1],x[2],col(x[0]))).join('')}</div>`;
 }
+function sumKind(from,to,kind){
+  return r2(S.tx.reduce((a,t)=>{if(txKind(t)!==kind)return a;const k=ymd(new Date(t.d));return k<from||k>to?a:a+t.amt},0));
+}
+function sumHtml(r,inc,sp){
+  if(!inc&&!sp)return '';
+  const nm=ST.off===0?{day:'Bu gün',week:'Bu həftə',month:'Bu ay'}[ST.p]:r.label,d=r2(inc-sp),ok=d>=0;
+  const msg=!inc?'gəlir yazılmayıb.':ok?`gəlirin ${Math.round(d/inc*100)}%-i qalıb.`:`xərc gəlirdən ${fmt(d)} çoxdur.`;
+  return `<div class="card"><div class="trio"><div><small>Gəlir</small><b class="num pos">${fmt(inc)}</b></div><div><small>Xərc</small><b class="num neg">${fmt(sp)}</b></div><div><small>${ok?'Qənaət':'Kəsir'}</small><b class="num ${ok?'pos':'neg'}">${fmt(d)}</b></div></div><div class="note" style="text-align:center;margin-top:8px">${esc(nm)}: ${msg}</div></div>`;
+}
+function fcHtml(tot){
+  if(ST.p!=='month'||ST.off!==0||!tot)return '';
+  const n=new Date(),dom=n.getDate(),L=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
+  if(dom<3)return '';
+  const avg=tot/dom,proj=avg*L,pf=prangeAt(-1),full=r2(Object.values(spendBy(pf.from,pf.to)).reduce((x,y)=>x+y,0));
+  return `<div class="card"><h3 style="margin:0 0 6px;font-size:15px">Ay sonu proqnozu</h3><div class="num neg" style="font-size:26px;font-weight:700">~${fmt0(proj)}</div><div class="note">Bu tempdə (gündə orta ${fmt(avg)}) ay sonuna qədər təxminən bu qədər xərcləyəcəksən.${full?` Keçən ay cəmi ${fmt0(full)} xərclənmişdi.`:''}</div></div>`;
+}
 function renderStat(){
   const r=prange(),pr=prevRange(),cur=spendBy(r.from,r.to),prev=spendBy(pr.from,pr.to);
   const rows=lastRows=Object.entries(cur).sort((a,b)=>b[1]-a[1]),tot=rows.reduce((x,y)=>x+y[1],0);
@@ -242,15 +262,16 @@ function renderStat(){
   const arcs=rows.map(([c,v])=>{const q=v/tot*100,e=`<circle cx="21" cy="21" r="15.915" fill="none" stroke="${col(c)}" stroke-width="7" stroke-dasharray="${q} ${100-q}" stroke-dashoffset="${25-cum}"/>`;cum+=q;return e}).join('');
   const P=[['day','Gün'],['week','Həftə'],['month','Ay']];
   let h=seg()+`<div class="seg">${P.map(x=>`<button class="${ST.p===x[0]?'on':''}" onclick="setP('${x[0]}')">${x[1]}</button>`).join('')}</div>
-  <div data-sw="p"><div class="pnav"><button onclick="stepP(-1)" aria-label="Əvvəlki">‹</button><b>${r.label}</b><button onclick="stepP(1)" ${ST.off>=0?'disabled':''} aria-label="Sonrakı">›</button></div>`;
+  <div data-sw="p"><div class="pnav"><button onclick="stepP(-1)" aria-label="Əvvəlki">‹</button><b>${r.label}</b><button onclick="stepP(1)" ${ST.off>=0?'disabled':''} aria-label="Sonrakı">›</button></div>`+sumHtml(r,sumKind(r.from,r.to,'add'),r2(tot));
   if(!rows.length)h+=`<div class="card"><div class="empty">Bu dövrdə xərc yoxdur.</div></div></div>`;
   else h+=`<div class="card"><svg viewBox="0 0 42 42" width="230" height="230" style="display:block;margin:4px auto"><circle cx="21" cy="21" r="15.915" fill="none" style="stroke:var(--line)" stroke-width="7"/>${arcs}<text x="21" y="20" text-anchor="middle" font-size="2.6" style="fill:var(--mute)">Xərc cəmi</text><text x="21" y="24.5" text-anchor="middle" font-size="3.6" font-weight="700" style="fill:var(--ink)">${fmt(tot)}</text></svg>
   <div class="note" style="text-align:center">Ən çox: ${esc(rows[0][0])}</div></div></div>`;
+  h+=fcHtml(tot);
   h+=cmpHtml(r,pr,cur,prev,col);
   if(rows.length)h+=`<div class="card">`+rows.map((x,i)=>`<div class="acc" onclick="goCat(${i})"><div style="display:flex;align-items:center;gap:10px"><span class="dot" style="background:${col(x[0])}"></span><div><div class="n">${esc(x[0])}</div><div class="t">${(x[1]/tot*100).toFixed(1)}%</div></div></div><div class="b num neg">${fmt(x[1])}</div></div>`).join('')+`</div>`;
   $('#app').innerHTML=h;
 }
-function goCat(i){const r=prange();F={type:'spend',cat:lastRows[i][0],from:r.from,to:r.to,q:''};view='tx';render();scrollTo(0,0)}
+function goCat(i){const r=prange();F={type:'spend',cat:lastRows[i][0],from:r.from,to:r.to,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
 
 function renderSet(){
   $('#app').innerHTML=seg()+`<h2>Kateqoriyalar <button onclick="openCat()">+ Yeni</button></h2><div class="card">`+S.cats.map((c,i)=>`<div class="acc" onclick="openCat(${i})"><div><div class="n">${esc(c)}</div><div class="t">${S.tx.filter(t=>catOf(t)===c).length} xərc</div></div><div class="t">›</div></div>`).join('')+`</div>
@@ -469,7 +490,7 @@ function noteOf(t){
 }
 function mkLabel(t){
   const k=txKind(t),p=txParts(t),nm=id=>A(id).name;
-  if(k==='move')return p.from&&p.to?`${nm(p.from)} → ${nm(p.to)}`:t.label;
+  if(k==='move')return p.from&&p.to?`${noteOf(t)||'Transfer'} · ${nm(p.from)} → ${nm(p.to)}`:t.label;
   const note=noteOf(t);
   if(k==='add')return p.to?`${note||'Əlavə'} · ${nm(p.to)}`:t.label;
   return p.from?`${note||'Xərc'} · ${nm(p.from)}${p.bud?' → '+nm(p.bud):''}`:t.label;
@@ -517,7 +538,7 @@ function openOp(kind){
   if(kind==='move'){
     if(R.length<2)return alert('Transfer üçün ən azı iki hesab lazımdır (büdcə hesabları transferdə iştirak etmir).');
     h+=`<label>Haradan</label><select id="f-from">${opts(R)}</select><label>Hara</label><select id="f-to">${opts(R,R[1].id)}</select>
-    <label>Məbləğ</label>${amtF('f-amt','')}
+    <label>Məbləğ</label>${amtF('f-amt','')}<label>Qeyd (istəyə bağlı)</label><input id="f-note">
     <div class="note">Göndərən hesabda pul azdırsa, çatmayan hissə qırmızı qalıq kimi görünür. Kreditə ödəniş üçün də transferdən istifadə et.</div>`;}
   h+=`<label>Tarix</label><input id="f-date" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"><button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
   openS(h);
@@ -544,7 +565,7 @@ function doOp(kind){
   if(kind==='move'){
     const f=A($('#f-from').value),t=A($('#f-to').value);
     if(f.id===t.id)return alert('Fərqli hesablar seç.');
-    post(`${f.name} → ${t.name}`,'',amt,{[f.id]:-amt,[t.id]:amt},{kind:'move',d:D});
+    post(`${note||'Transfer'} · ${f.name} → ${t.name}`,'',amt,{[f.id]:-amt,[t.id]:amt},{kind:'move',d:D,note});
   }
 }
 const dateTs=v=>{if(!v||v===ymd(new Date()))return Date.now();const[y,m,d]=v.split('-').map(Number);return new Date(y,m-1,d,12).getTime()};
@@ -554,24 +575,42 @@ function txParts(t){
   if(k==='spend')return{from:ids.find(i=>!isB(A(i))),bud:ids.find(i=>isB(A(i)))};
   return{from:ids.find(i=>t.deltas[i]<0),to:ids.find(i=>t.deltas[i]>0)};
 }
-function openTxEdit(id){
-  const t=S.tx.find(x=>x.id===id),k=txKind(t),p=txParts(t);
+function openTxEdit(id,nk,dr){
+  const t=S.tx.find(x=>x.id===id),ok=txKind(t),k=nk||ok,p=txParts(t);
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   const gone=Object.keys(t.deltas).some(x=>!A(x)),mx=ymd(new Date(Math.max(Date.now(),t.d)));
-  let h=`<h3>Əməliyyatı redaktə et</h3>${k==='move'?`<div class="note">${esc(t.label)}</div>`:`<label>Qeyd (istəyə bağlı)</label><input id="e-label" value="${esc(noteOf(t))}">`}
-  <label>Məbləğ</label>${amtF('e-amt',t.amt)}`;
-  if(k==='add')h+=`<label>Hesab</label><select id="e-to">${opts(S.acc,p.to)}</select>`;
-  if(k==='spend')h+=`<label>Hansı hesabdan</label><select id="e-from">${opts(R,p.from)}</select>
-    <label>Kateqoriya</label><select id="e-cat">${S.cats.map(c=>`<option ${c===catOf(t)?'selected':''}>${c}</option>`).join('')}</select>
-    <label>Xərc büdcəsindən də çıx</label><select id="e-bud"><option value="">Yox</option>${opts(B,p.bud)}</select>`;
-  if(k==='move')h+=`<label>Haradan</label><select id="e-from">${opts(R,p.from)}</select><label>Hara</label><select id="e-to">${opts(R,p.to)}</select>`;
-  h+=`<label>Tarix</label><input id="e-date" type="date" value="${ymd(new Date(t.d))}" max="${mx}">
+  const D=dr||{note:noteOf(t),amt:t.amt,date:ymd(new Date(t.d))};
+  const inR=i=>R.some(a=>a.id===i)?i:(R[0]||{}).id,first=ex=>(R.find(a=>a.id!==ex)||R[0]||{}).id;
+  let P={};
+  if(k==='add')P={to:ok==='spend'?p.from:p.to};
+  else if(k==='spend')P={from:inR(ok==='add'?p.to:p.from),bud:ok==='spend'?p.bud:'',cat:ok==='spend'?catOf(t):(S.cats.includes(S.last.cat)?S.last.cat:S.cats[0])};
+  else if(ok==='move')P={from:p.from,to:p.to};
+  else if(ok==='spend'){const f=inR(p.from);P={from:f,to:first(f)}}
+  else{const to=inR(p.to);P={from:first(to),to}}
+  const T=[['spend','Xərc'],['add','Əlavə et'],['move','Transfer']];
+  let h=`<h3>Əməliyyatı redaktə et</h3><div class="tabs">${T.map(x=>`<button class="${x[0]===k?'on':''}" onclick="txKind2('${id}','${x[0]}')">${x[1]}</button>`).join('')}</div>
+  <input type="hidden" id="e-kind" value="${k}">
+  <label>Qeyd (istəyə bağlı)</label><input id="e-label" value="${esc(D.note)}">
+  <label>Məbləğ</label>${amtF('e-amt',D.amt)}`;
+  if(k==='add')h+=`<label>Hesab</label><select id="e-to">${opts(S.acc,P.to)}</select>`;
+  if(k==='spend')h+=`<label>Hansı hesabdan</label><select id="e-from">${opts(R,P.from)}</select>
+    <label>Kateqoriya</label><select id="e-cat">${S.cats.map(c=>`<option ${c===P.cat?'selected':''}>${c}</option>`).join('')}</select>
+    <label>Xərc büdcəsindən də çıx</label><select id="e-bud"><option value="">Yox</option>${opts(B,P.bud)}</select>`;
+  if(k==='move')h+=`<label>Haradan</label><select id="e-from">${opts(R,P.from)}</select><label>Hara</label><select id="e-to">${opts(R,P.to)}</select>`;
+  h+=`<label>Tarix</label><input id="e-date" type="date" value="${D.date}" max="${mx}">
   <div class="note">Dəyişikliklər hesablara avtomatik tətbiq olunur.${gone?' Bu əməliyyatın hesabı silinib: yadda saxlasan, seçdiyin hesaba tətbiq olunacaq.':''}</div>
   <button class="btn" onclick="saveTx('${id}')">Yadda saxla</button><button class="btn alt" onclick="delTx('${id}')">Sil</button>`;
   openS(h);
 }
+// əməliyyatın növünü dəyiş (Xərc / Əlavə / Transfer): yazılmış qeyd, məbləğ və tarix qalır
+function txKind2(id,k){
+  const R=S.acc.filter(a=>!isB(a));
+  if(k==='move'&&R.length<2)return alert('Transfer üçün ən azı iki pul hesabı lazımdır (büdcə hesabları transferdə iştirak etmir).');
+  if(k==='spend'&&!R.length)return alert('Xərc üçün pul hesabı lazımdır.');
+  openTxEdit(id,k,{note:$('#e-label').value,amt:$('#e-amt').value,date:$('#e-date').value});
+}
 function saveTx(id){
-  const t=S.tx.find(x=>x.id===id),k=txKind(t),amt=num($('#e-amt').value),g=x=>$(x)?$(x).value:'';
+  const t=S.tx.find(x=>x.id===id),g=x=>$(x)?$(x).value:'',k=g('#e-kind')||txKind(t),amt=num($('#e-amt').value);
   if(amt===null||amt<=0)return alert('Məbləği düzgün yaz.');
   const dv=g('#e-date');
   if(dv&&dv!==ymd(new Date(t.d))&&dv>ymd(new Date()))return alert('Gələcək tarix seçmək olmaz.');
@@ -582,8 +621,9 @@ function saveTx(id){
   for(const x in t.deltas){const a=A(x);if(a)a.balance=r2(a.balance-t.deltas[x])}
   for(const x in nd){const a=A(x);if(a)a.balance=r2(a.balance+nd[x])}
   t.deltas=nd;t.amt=r2(amt);
-  if(k!=='move')t.note=g('#e-label').trim();
-  if(k==='spend')t.cat=g('#e-cat');
+  if(k!==txKind(t)){t.kind=k;t.sign=k==='add'?'+':k==='spend'?'−':'';delete t.auto;delete t.rid}
+  t.note=g('#e-label').trim();
+  if(k==='spend')t.cat=g('#e-cat');else delete t.cat;
   if(dv&&dv!==ymd(new Date(t.d)))t.d=dateTs(dv);
   t.label=mkLabel(t);
   S.tx.sort((x,y)=>y.d-x.d);save();closeS();render();
