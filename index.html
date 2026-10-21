@@ -100,7 +100,6 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const r2=n=>Math.round(n*100)/100;
 // mənfi işarəsi göstərilmir: qırmızı rəng = xərc/borc
 const fmt=n=>r2(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' ₼';
-const fmtS=n=>(r2(n)<0?'−':'')+fmt(n);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function evalExpr(v){
   const e=String(v).replace(/,/g,'.').replace(/[×x*]/gi,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s/g,'');
@@ -342,18 +341,19 @@ function render(){
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   const pos=total(R.filter(a=>a.balance>0)),neg=total(R.filter(a=>a.balance<0)),bud=B.reduce((s,a)=>s+Math.max(0,a.balance),0);
   const net=pos+neg-bud,dl=daysLeft();
+  const cp=[neg<0?'borclar':'',B.length?'xərc büdcəsi':''].filter(Boolean).join(' və ');
   const dailyAccs=S.acc.filter(a=>isB(a)||a.daily);
-  let h=seg()+`<div class="hero"><small>Hazırda sənin pulun</small>
-  <div class="big num ${net<0?'neg':''}">${fmtS(net)}</div>
-  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmtS(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div></div>`;
+  let h=seg()+`<div class="hero"><small>${net<0?'Hazırda sənin borcun':'Hazırda sənin pulun'}</small>
+  <div class="big num ${net<0?'neg':''}">${fmt(net)}</div>
+  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div>${cp?`<small style="display:block;margin-top:10px;font-size:12px;opacity:.7">${cp[0].toUpperCase()+cp.slice(1)} ümumi məbləğdən çıxılır.</small>`:''}</div>`;
   if(dailyAccs.length){
     h+=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><p>Bu gün də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
-    dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmtS(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
+    dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
     h+=`</div>`;
   }
   h+=tplHtml();
   h+=`<h2>Hesablar <span>${S.acc.length>1?`<button onclick="toggleSort()">${sortMode?'Hazır':'Sırala'}</button>`:''}<button onclick="openAcc()">+ Yeni</button></span></h2><div class="card">`;
-  h+=S.acc.map((a,i)=>`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmtS(a.balance)}</div>`}</div>`).join('')
+  h+=S.acc.map((a,i)=>`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`).join('')
     ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div>`+rulesHtml()+`<h2>Son əməliyyatlar <button onclick="setView('tx')">Hamısı</button></h2><div class="card">`;
   h+=S.tx.slice(0,5).map(txRow).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
@@ -363,7 +363,7 @@ function render(){
 
 function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
 function closeS(){$('#sheet').hidden=true}
-const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə ':a.balance<0?'borc ':''}${isB(a)?fmtS(a.balance):fmt(a.balance)})</option>`).join('');
+const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə ':a.balance<0?'borc ':''}${fmt(a.balance)})</option>`).join('');
 const kindOf=a=>isB(a)?'b':a.balance<0?'n':'p';
 const kindSel=k=>`<label>Hesabın növü</label><select id="f-kind"><option value="p" ${k==='p'?'selected':''}>Pulum var</option><option value="n" ${k==='n'?'selected':''}>Borc / xərc (qırmızı)</option><option value="b" ${k==='b'?'selected':''}>Xərc büdcəsi (ümumi puldan çıxılır)</option></select>
 <div class="note">Xərc büdcəsi: ay üçün xərcə ayırdığın məbləğ. Ümumi puldan çıxılır və gündəlik limit avtomatik hesablanır.</div>`;
@@ -403,7 +403,7 @@ function delAcc(id){
   const a=A(id);if(!a)return;
   const nt=S.tx.filter(t=>t.deltas&&id in t.deltas).length,tp=S.tpls.filter(t=>t.acc===id).length,rl=S.rules.filter(r=>r.acc===id).length;
   const m=[`"${a.name}" hesabı silinsin?`];
-  if(a.balance)m.push(`• Qalığı (${fmtS(a.balance)}) ümumi cəmdən çıxacaq`);
+  if(a.balance)m.push(`• ${a.balance<0?'Borcu':'Qalığı'} (${fmt(a.balance)}) artıq ümumi məbləğə daxil olmayacaq`);
   if(nt)m.push(`• ${nt} əməliyyat tarixçədə qalacaq, amma artıq bu hesaba bağlı olmayacaq`);
   if(tp)m.push(`• ${tp} şablon silinəcək`);
   if(rl)m.push(`• ${rl} təkrarlanan xərc silinəcək`);
