@@ -78,6 +78,8 @@ body{overflow-x:clip}
 #app.sl{animation:sl .2s ease-out}#app.sr{animation:sr .2s ease-out}
 @media(prefers-reduced-motion:reduce){#app.sl,#app.sr{animation:none}}
 .box{overscroll-behavior:contain}.box::before{content:"";display:block;width:38px;height:4px;border-radius:2px;background:var(--line);margin:-8px auto 14px}
+.warn{position:fixed;top:0;left:0;right:0;z-index:40;background:var(--neg);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 8px) 14px 8px;display:flex;gap:12px;align-items:center;justify-content:space-between;font-size:13px}
+.warn button{background:#fff;color:var(--neg);border:0;border-radius:10px;padding:7px 12px;font:700 13px inherit;flex:none}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
 </style>
 </head>
@@ -85,16 +87,20 @@ body{overflow-x:clip}
 <div id="app"></div>
 <button class="fab" onclick="openOp('spend')">+ Əməliyyat</button>
 <div class="toast" id="toast" hidden></div>
+<div class="warn" id="warn" hidden><span>Data yadda saxlanmadı! Nüsxə al, yoxsa itə bilər.</span><button onclick="exportD()">Nüsxə al</button></div>
 <div class="sheet" id="sheet" hidden onclick="if(event.target===this)closeS()"><div class="box" id="box"></div></div>
 
 <script>
 const K='xerc-izleyici-v1';
 const $=s=>document.querySelector(s);
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+let saveBad=false;
+const warn=on=>{const e=document.getElementById('warn');if(e)e.hidden=!on};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S));if(saveBad){saveBad=false;warn(0)}return true}catch(e){saveBad=true;warn(1);return false}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const r2=n=>Math.round(n*100)/100;
 // mənfi işarəsi göstərilmir: qırmızı rəng = xərc/borc
 const fmt=n=>r2(Math.abs(n)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}).replace(/,/g,' ')+' ₼';
+const fmtS=n=>(r2(n)<0?'−':'')+fmt(n);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function evalExpr(v){
   const e=String(v).replace(/,/g,'.').replace(/[×x*]/gi,'*').replace(/÷/g,'/').replace(/[−–]/g,'-').replace(/\s/g,'');
@@ -135,7 +141,7 @@ function quick(k){const n=new Date(),t=ymd(n);
   else if(k==='week'){const x=new Date(n);x.setDate(n.getDate()-((n.getDay()+6)%7));F.from=ymd(x);F.to=t}
   else{F.from=ymd(new Date(n.getFullYear(),n.getMonth(),1));F.to=t}
   render()}
-const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="tx" onclick="openTxEdit('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${fmt(t.amt)}</span></div></div>`};
+const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="tx" onclick="openTxEdit('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${k==='add'?'+':''}${fmt(t.amt)}</span></div></div>`};
 function dayGroups(l){
   if(!l.length)return '<div class="card"><div class="empty">Bu filtrə uyğun əməliyyat yoxdur.</div></div>';
   const g=[];[...l].sort((a,b)=>b.d-a.d).slice(0,300).forEach(t=>{const k=ymd(new Date(t.d));let x=g[g.length-1];if(!x||x.k!==k){x={k,l:[]};g.push(x)}x.l.push(t)});
@@ -320,7 +326,7 @@ function runRules(){
       const hit=r.freq==='daily'||(r.freq==='weekly'&&r.days.includes(d.getDay()))||(r.freq==='monthly'&&d.getDate()===Math.min(r.dom,last));
       const a=A(r.acc);if(!hit||!a)continue;
       const b=r.bud?A(r.bud):null,dl={[a.id]:-r.amt};if(b)dl[b.id]=-r.amt;
-      post(r.name+' · '+a.name,'−',r.amt,dl,{kind:'spend',cat:r.cat,auto:1,rid:r.id,d:k===today?Date.now():d.getTime(),quiet:1});n++;
+      post(r.name+' · '+a.name,'−',r.amt,dl,{kind:'spend',cat:r.cat,auto:1,rid:r.id,note:r.name,d:k===today?Date.now():d.getTime(),quiet:1});n++;
     }
   });
   if(n)S.tx.sort((x,y)=>y.d-x.d);
@@ -338,16 +344,16 @@ function render(){
   const net=pos+neg-bud,dl=daysLeft();
   const dailyAccs=S.acc.filter(a=>isB(a)||a.daily);
   let h=seg()+`<div class="hero"><small>Hazırda sənin pulun</small>
-  <div class="big num ${net<0?'neg':''}">${fmt(net)}</div>
-  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div></div>`;
+  <div class="big num ${net<0?'neg':''}">${fmtS(net)}</div>
+  <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmtS(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div></div>`;
   if(dailyAccs.length){
     h+=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><p>Bu gün də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
-    dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
+    dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmtS(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
     h+=`</div>`;
   }
   h+=tplHtml();
   h+=`<h2>Hesablar <span>${S.acc.length>1?`<button onclick="toggleSort()">${sortMode?'Hazır':'Sırala'}</button>`:''}<button onclick="openAcc()">+ Yeni</button></span></h2><div class="card">`;
-  h+=S.acc.map((a,i)=>`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`).join('')
+  h+=S.acc.map((a,i)=>`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmtS(a.balance)}</div>`}</div>`).join('')
     ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div>`+rulesHtml()+`<h2>Son əməliyyatlar <button onclick="setView('tx')">Hamısı</button></h2><div class="card">`;
   h+=S.tx.slice(0,5).map(txRow).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
@@ -357,7 +363,7 @@ function render(){
 
 function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
 function closeS(){$('#sheet').hidden=true}
-const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə ':a.balance<0?'borc ':''}${fmt(a.balance)})</option>`).join('');
+const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə ':a.balance<0?'borc ':''}${isB(a)?fmtS(a.balance):fmt(a.balance)})</option>`).join('');
 const kindOf=a=>isB(a)?'b':a.balance<0?'n':'p';
 const kindSel=k=>`<label>Hesabın növü</label><select id="f-kind"><option value="p" ${k==='p'?'selected':''}>Pulum var</option><option value="n" ${k==='n'?'selected':''}>Borc / xərc (qırmızı)</option><option value="b" ${k==='b'?'selected':''}>Xərc büdcəsi (ümumi puldan çıxılır)</option></select>
 <div class="note">Xərc büdcəsi: ay üçün xərcə ayırdığın məbləğ. Ümumi puldan çıxılır və gündəlik limit avtomatik hesablanır.</div>`;
@@ -389,9 +395,24 @@ function openEdit(id){
 }
 function saveEdit(id){
   const d=readAcc();if(!d)return alert('Ad və məbləği düzgün yaz.');
-  Object.assign(A(id),d);save();closeS();render();
+  const old=A(id).name;Object.assign(A(id),d);
+  if(old!==d.name)S.tx.forEach(t=>{if(t.deltas&&id in t.deltas){if(t.note===undefined&&txKind(t)!=='move')t.note=noteOf(t);t.label=mkLabel(t)}});
+  save();closeS();render();
 }
-function delAcc(id){if(!confirm('Bu hesab silinsin?'))return;S.acc=S.acc.filter(a=>a.id!==id);save();closeS();render()}
+function delAcc(id){
+  const a=A(id);if(!a)return;
+  const nt=S.tx.filter(t=>t.deltas&&id in t.deltas).length,tp=S.tpls.filter(t=>t.acc===id).length,rl=S.rules.filter(r=>r.acc===id).length;
+  const m=[`"${a.name}" hesabı silinsin?`];
+  if(a.balance)m.push(`• Qalığı (${fmtS(a.balance)}) ümumi cəmdən çıxacaq`);
+  if(nt)m.push(`• ${nt} əməliyyat tarixçədə qalacaq, amma artıq bu hesaba bağlı olmayacaq`);
+  if(tp)m.push(`• ${tp} şablon silinəcək`);
+  if(rl)m.push(`• ${rl} təkrarlanan xərc silinəcək`);
+  if(!confirm(m.join('\n')))return;
+  S.tpls=S.tpls.filter(t=>t.acc!==id);S.tpls.forEach(t=>{if(t.bud===id)t.bud=''});
+  S.rules=S.rules.filter(r=>r.acc!==id);S.rules.forEach(r=>{if(r.bud===id)r.bud=''});
+  ['from','to','bud'].forEach(k=>{if(S.last[k]===id)delete S.last[k]});
+  S.acc=S.acc.filter(x=>x.id!==id);save();closeS();render();
+}
 
 // ---- Tez əlavə (şablonlar)
 const tplHtml=()=>{
@@ -427,7 +448,7 @@ function quickAdd(id){
   const t=S.tpls.find(x=>x.id===id),a=t&&A(t.acc);
   if(!a)return alert('Bu şablonun hesabı silinib. Şablonu dəyişib hesab seç.');
   const b=t.bud?A(t.bud):null,d={[a.id]:-t.amt};if(b)d[b.id]=-t.amt;
-  const x=post(`${t.name} · ${a.name}${b?' → '+b.name:''}`,'−',t.amt,d,{kind:'spend',cat:t.cat});
+  const x=post(`${t.name} · ${a.name}${b?' → '+b.name:''}`,'−',t.amt,d,{kind:'spend',cat:t.cat,note:t.name});
   toast(`${esc(t.name)} · ${fmt(t.amt)} əlavə olundu`,x.id);
 }
 let tT;
@@ -439,7 +460,20 @@ function undoTx(id){clearTimeout(tT);$('#toast').hidden=true;rmTx(id)}
 
 // ---- Formada yadda saxlama: son hesab/kateqoriya/büdcə + qeydə görə kateqoriya
 let NM=[];
-const noteOf=t=>String(t.label).split(' · ')[0].trim();
+const DEF={add:'Əlavə',spend:'Xərc'};
+function noteOf(t){
+  if(t.note!==undefined)return t.note;
+  const k=txKind(t);if(k==='move')return '';
+  const l=String(t.label),i=l.lastIndexOf(' · '),n=(i>0?l.slice(0,i):l).trim();
+  return n===DEF[k]?'':n;
+}
+function mkLabel(t){
+  const k=txKind(t),p=txParts(t),nm=id=>A(id).name;
+  if(k==='move')return p.from&&p.to?`${nm(p.from)} → ${nm(p.to)}`:t.label;
+  const note=noteOf(t);
+  if(k==='add')return p.to?`${note||'Əlavə'} · ${nm(p.to)}`:t.label;
+  return p.from?`${note||'Xərc'} · ${nm(p.from)}${p.bud?' → '+nm(p.bud):''}`:t.label;
+}
 function buildNotes(){
   const seen=new Set();NM=[];
   [...S.tx].sort((a,b)=>b.d-a.d).forEach(t=>{
@@ -485,26 +519,27 @@ function openOp(kind){
     h+=`<label>Haradan</label><select id="f-from">${opts(R)}</select><label>Hara</label><select id="f-to">${opts(R,R[1].id)}</select>
     <label>Məbləğ</label>${amtF('f-amt','')}
     <div class="note">Göndərən hesabda pul azdırsa, çatmayan hissə qırmızı qalıq kimi görünür. Kreditə ödəniş üçün də transferdən istifadə et.</div>`;}
-  h+=`<label>Tarix</label><input id="f-date" type="date" value="${ymd(new Date())}"><button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
+  h+=`<label>Tarix</label><input id="f-date" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"><button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
   openS(h);
 }
 function post(label,sign,amt,deltas,x={}){
   for(const id in deltas){const a=A(id);if(a)a.balance=r2(a.balance+deltas[id])}
-  const tx={id:uid(),d:x.d||Date.now(),label,sign,amt,deltas,kind:x.kind,cat:x.cat,auto:x.auto,rid:x.rid};S.tx.unshift(tx);
+  const tx={id:uid(),d:x.d||Date.now(),label,sign,amt,deltas,kind:x.kind,cat:x.cat,auto:x.auto,rid:x.rid,note:x.note};S.tx.unshift(tx);
   if(!x.quiet){S.tx.sort((p,q)=>q.d-p.d);save();closeS();render()}
   return tx;
 }
 function doOp(kind){
   const amt=num($('#f-amt').value);
   if(amt===null||amt<=0)return alert('Məbləği düzgün yaz.');
+  if($('#f-date').value>ymd(new Date()))return alert('Gələcək tarixə əməliyyat yazmaq olmaz.');
   const note=$('#f-note')?$('#f-note').value.trim():'',D=dateTs($('#f-date').value);
-  if(kind==='add'){const a=A($('#f-to').value);S.last={...S.last,to:a.id};post(`${note||'Əlavə'} · ${a.name}`,'+',amt,{[a.id]:amt},{kind:'add',d:D})}
+  if(kind==='add'){const a=A($('#f-to').value);S.last={...S.last,to:a.id};post(`${note||'Əlavə'} · ${a.name}`,'+',amt,{[a.id]:amt},{kind:'add',d:D,note})}
   if(kind==='spend'){
     const a=A($('#f-from').value),c=$('#f-cat').value?A($('#f-cat').value):null;
     const d={[a.id]:-amt};if(c)d[c.id]=-amt;
     S.last={...S.last,from:a.id,cat:$('#f-catg').value,bud:c?c.id:''};
     if($('#f-tpl').checked)S.tpls.push({id:uid(),name:note||$('#f-catg').value,amt,cat:$('#f-catg').value,acc:a.id,bud:c?c.id:''});
-    post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',amt,d,{kind:'spend',cat:$('#f-catg').value,d:D});
+    post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',amt,d,{kind:'spend',cat:$('#f-catg').value,d:D,note});
   }
   if(kind==='move'){
     const f=A($('#f-from').value),t=A($('#f-to').value);
@@ -522,32 +557,35 @@ function txParts(t){
 function openTxEdit(id){
   const t=S.tx.find(x=>x.id===id),k=txKind(t),p=txParts(t);
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
-  let h=`<h3>Əməliyyatı redaktə et</h3><label>Ad / qeyd</label><input id="e-label" value="${esc(t.label)}">
+  const gone=Object.keys(t.deltas).some(x=>!A(x)),mx=ymd(new Date(Math.max(Date.now(),t.d)));
+  let h=`<h3>Əməliyyatı redaktə et</h3>${k==='move'?`<div class="note">${esc(t.label)}</div>`:`<label>Qeyd (istəyə bağlı)</label><input id="e-label" value="${esc(noteOf(t))}">`}
   <label>Məbləğ</label>${amtF('e-amt',t.amt)}`;
   if(k==='add')h+=`<label>Hesab</label><select id="e-to">${opts(S.acc,p.to)}</select>`;
   if(k==='spend')h+=`<label>Hansı hesabdan</label><select id="e-from">${opts(R,p.from)}</select>
     <label>Kateqoriya</label><select id="e-cat">${S.cats.map(c=>`<option ${c===catOf(t)?'selected':''}>${c}</option>`).join('')}</select>
     <label>Xərc büdcəsindən də çıx</label><select id="e-bud"><option value="">Yox</option>${opts(B,p.bud)}</select>`;
   if(k==='move')h+=`<label>Haradan</label><select id="e-from">${opts(R,p.from)}</select><label>Hara</label><select id="e-to">${opts(R,p.to)}</select>`;
-  h+=`<label>Tarix</label><input id="e-date" type="date" value="${ymd(new Date(t.d))}">
-  <div class="note">Dəyişikliklər hesablara avtomatik tətbiq olunur.</div>
+  h+=`<label>Tarix</label><input id="e-date" type="date" value="${ymd(new Date(t.d))}" max="${mx}">
+  <div class="note">Dəyişikliklər hesablara avtomatik tətbiq olunur.${gone?' Bu əməliyyatın hesabı silinib: yadda saxlasan, seçdiyin hesaba tətbiq olunacaq.':''}</div>
   <button class="btn" onclick="saveTx('${id}')">Yadda saxla</button><button class="btn alt" onclick="delTx('${id}')">Sil</button>`;
   openS(h);
 }
 function saveTx(id){
-  const t=S.tx.find(x=>x.id===id),k=txKind(t),amt=num($('#e-amt').value),label=$('#e-label').value.trim();
-  if(amt===null||amt<=0||!label)return alert('Ad və məbləği düzgün yaz.');
-  const g=x=>$(x)?$(x).value:'';
+  const t=S.tx.find(x=>x.id===id),k=txKind(t),amt=num($('#e-amt').value),g=x=>$(x)?$(x).value:'';
+  if(amt===null||amt<=0)return alert('Məbləği düzgün yaz.');
+  const dv=g('#e-date');
+  if(dv&&dv!==ymd(new Date(t.d))&&dv>ymd(new Date()))return alert('Gələcək tarix seçmək olmaz.');
   let nd;
   if(k==='add')nd={[g('#e-to')]:amt};
   else if(k==='spend'){nd={[g('#e-from')]:-amt};if(g('#e-bud'))nd[g('#e-bud')]=-amt}
   else{if(g('#e-from')===g('#e-to'))return alert('Fərqli hesablar seç.');nd={[g('#e-from')]:-amt,[g('#e-to')]:amt}}
   for(const x in t.deltas){const a=A(x);if(a)a.balance=r2(a.balance-t.deltas[x])}
   for(const x in nd){const a=A(x);if(a)a.balance=r2(a.balance+nd[x])}
-  t.deltas=nd;t.amt=r2(amt);t.label=label;
+  t.deltas=nd;t.amt=r2(amt);
+  if(k!=='move')t.note=g('#e-label').trim();
   if(k==='spend')t.cat=g('#e-cat');
-  const dv=g('#e-date');
   if(dv&&dv!==ymd(new Date(t.d)))t.d=dateTs(dv);
+  t.label=mkLabel(t);
   S.tx.sort((x,y)=>y.d-x.d);save();closeS();render();
 }
 function delTx(id){
