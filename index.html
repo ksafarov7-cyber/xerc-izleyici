@@ -84,6 +84,15 @@ body{overflow-x:clip}
 .warn{position:fixed;top:0;left:0;right:0;z-index:40;background:var(--neg);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 8px) 14px 8px;display:flex;gap:12px;align-items:center;justify-content:space-between;font-size:13px}
 .warn button{background:#fff;color:var(--neg);border:0;border-radius:10px;padding:7px 12px;font:700 13px inherit;flex:none}
 .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.trio small{display:block;color:var(--mute);font-size:12px}.trio b{display:block;font-size:17px;margin-top:2px}
+.fab{transition:transform .12s ease,opacity .12s ease}
+button,.acc{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+button{transition:transform .12s ease,opacity .12s ease}
+button:not(:disabled):not(.fab):active{transform:scale(.96);opacity:.7}
+button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
+.fab:active{transform:translateX(-50%) scale(.95);opacity:.9}
+.acc{transition:background-color .15s ease}
+.acc:active{background:var(--line);box-shadow:-16px 0 0 var(--line),16px 0 0 var(--line)}
+@media(prefers-reduced-motion:reduce){button,.fab{transition:none}button:not(:disabled):not(.fab):active{transform:none}.fab:active{transform:translateX(-50%)}}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
 </style>
 </head>
@@ -97,6 +106,25 @@ body{overflow-x:clip}
 <script>
 const K='xerc-izleyici-v1';
 const $=s=>document.querySelector(s);
+const HK='xerc-hap';
+const hapOn=()=>{try{return localStorage.getItem(HK)!=='0'}catch(e){return true}};
+let hapLabel=null;
+// iPhone: Safari navigator.vibrate-i dəstəkləmir; <input type=checkbox switch> çevriləndə sistem "tık"ı verir
+function hapInit(){
+  if(hapLabel||!document.body)return;
+  const i=document.createElement('input');i.type='checkbox';i.id='hap-sw';i.setAttribute('switch','');i.tabIndex=-1;i.setAttribute('aria-hidden','true');
+  const l=document.createElement('label');l.htmlFor='hap-sw';l.setAttribute('aria-hidden','true');
+  const st='position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  i.style.cssText=st;l.style.cssText=st;document.body.append(i,l);hapLabel=l;
+}
+function hap(kind){
+  if(!hapOn())return;
+  try{
+    if(navigator.vibrate){navigator.vibrate(kind==='ok'?[12,50,12]:10);return}
+    hapInit();if(!hapLabel)return;hapLabel.click();
+    if(kind==='ok')setTimeout(()=>{hapLabel&&hapLabel.click()},70);
+  }catch(e){}
+}
 let saveBad=false;
 const warn=on=>{const e=document.getElementById('warn');if(e)e.hidden=!on};
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S));if(saveBad){saveBad=false;warn(0)}return true}catch(e){saveBad=true;warn(1);return false}};
@@ -137,7 +165,7 @@ const txKind=t=>t.kind||(t.sign==='+'?'add':t.sign==='−'?'spend':'move');
 const catOf=t=>t.cat||(txKind(t)==='spend'?'Digər':'');
 const seg=()=>`<div class="seg">${[['home','Ana səhifə'],['tx','Əməliyyatlar'],['stat','Statistika'],['set','⚙︎']].map(v=>`<button class="${view===v[0]?'on':''}" ${v[0]==='set'?'style="flex:0 0 46px" aria-label="Tənzimləmələr"':''} onclick="setView('${v[0]}')">${v[1]}</button>`).join('')}</div>`;
 const VW=['home','tx','stat','set'];
-function anim(d){if(!d)return;const a=$('#app');a.classList.remove('sl','sr');void a.offsetWidth;a.classList.add(d>0?'sl':'sr');try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}}
+function anim(d){if(!d)return;const a=$('#app');a.classList.remove('sl','sr');void a.offsetWidth;a.classList.add(d>0?'sl':'sr');hap('tick')}
 function setView(v){const d=VW.indexOf(v)-VW.indexOf(view);view=v;render();scrollTo(0,0);anim(d)}
 function setF(k,v){F[k]=v;txLim=300;render()}
 function moreTx(){txLim+=300;$('#txres').innerHTML=txList()}
@@ -284,11 +312,14 @@ function applyTheme(){
   let dark=v==='dark';if(v==='auto'){try{dark=matchMedia('(prefers-color-scheme:dark)').matches}catch(e){}}
   const m=document.querySelector('meta[name=theme-color]');if(m)m.content=dark?'#0e141a':'#eef1f4';
 }
+function setHap(on){try{localStorage.setItem(HK,on?'1':'0')}catch(e){}render();if(on)hap('ok')}
 function setTheme(v){try{localStorage.setItem(TH,v)}catch(e){}applyTheme();render()}
 try{matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyTheme)}catch(e){}
 function renderSet(){
   const th=getTheme();
-  $('#app').innerHTML=seg()+`<h2>Görünüş</h2><div class="card"><div class="seg" style="margin:0">${[['auto','Avtomatik'],['light','İşıqlı'],['dark','Qaranlıq']].map(x=>`<button class="${th===x[0]?'on':''}" onclick="setTheme('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="note" style="margin:8px 2px 0">Avtomatik: telefonun rejimini izləyir.</div></div>
+  $('#app').innerHTML=seg()+`<h2>Görünüş</h2><div class="card"><div class="seg" style="margin:0">${[['auto','Avtomatik'],['light','İşıqlı'],['dark','Qaranlıq']].map(x=>`<button class="${th===x[0]?'on':''}" onclick="setTheme('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="note" style="margin:8px 2px 0">Avtomatik: telefonun rejimini izləyir.</div>
+  <label style="margin-top:14px">Titrəyiş</label><div class="seg" style="margin:0">${[[1,'Açıq'],[0,'Bağlı']].map(x=>`<button class="${(hapOn()?1:0)===x[0]?'on':''}" onclick="setHap(${x[0]})">${x[1]}</button>`).join('')}</div>
+  <div class="note" style="margin:8px 2px 0">iPhone-da Parametrlər → Səslər və Haptika → Sistem Haptikası açıq olmalıdır.</div></div>
   <h2>Kateqoriyalar <button onclick="openCat()">+ Yeni</button></h2><div class="card">`+S.cats.map((c,i)=>`<div class="acc" onclick="openCat(${i})"><div><div class="n">${esc(c)}</div><div class="t">${S.tx.filter(t=>catOf(t)===c).length} xərc</div></div><div class="t">›</div></div>`).join('')+`</div>
   <h2>Data</h2><div class="card"><div class="acc" onclick="exportD()"><div class="n">Nüsxə al</div></div><div class="acc" onclick="importD()"><div class="n">Nüsxəni yüklə</div></div><div class="acc" onclick="resetAll()"><div class="n neg">Bütün datanı sil</div></div></div>`;
 }
@@ -345,7 +376,7 @@ function saveRule(id){
   const d={name,amt:r2(amt),cat:$('#r-cat').value,acc:$('#r-acc').value,bud:$('#r-bud').value,freq,days,dom};
   if(id)Object.assign(S.rules.find(x=>x.id===id),d);
   else{const y=new Date();y.setDate(y.getDate()-1);S.rules.push({id:uid(),...d,done:ymd(y)})}
-  runRules();save();closeS();render();
+  runRules();save();closeS();render();hap('ok');
 }
 function openRuleEdit(id){openRule(id)}
 function delRule(id){S.rules=S.rules.filter(r=>r.id!==id);save();closeS();render()}
@@ -476,7 +507,7 @@ function saveTpl(id){
   if(!name||amt===null||amt<=0)return alert('Ad və məbləği düzgün yaz.');
   const d={name,amt:r2(amt),cat:$('#t-cat').value,acc:$('#t-acc').value,bud:$('#t-bud').value};
   if(id)Object.assign(S.tpls.find(x=>x.id===id),d);else S.tpls.push({id:uid(),...d});
-  save();closeS();render();
+  save();closeS();render();hap('ok');
 }
 function delTpl(id){
   if(!confirm('Şablon silinsin? Əvvəlki əməliyyatlar qalır.'))return;
@@ -494,7 +525,7 @@ function toast(m,id){
   const e=$('#toast');e.innerHTML=`<span>${m}</span><button onclick="undoTx('${id}')">Ləğv et</button>`;e.hidden=false;
   clearTimeout(tT);tT=setTimeout(()=>{e.hidden=true},5000);
 }
-function undoTx(id){clearTimeout(tT);$('#toast').hidden=true;rmTx(id)}
+function undoTx(id){hap('tick');clearTimeout(tT);$('#toast').hidden=true;rmTx(id)}
 
 // ---- Formada yadda saxlama: son hesab/kateqoriya/büdcə + qeydə görə kateqoriya
 let NM=[];
@@ -561,11 +592,12 @@ function openOp(kind){
   openS(h);
   // toxunuş jestinin içində olduğu üçün klaviatura dərhal açılır
   const fa=$('#f-amt');if(fa)fa.focus({preventScroll:true});
+  hap('tick');
 }
 function post(label,sign,amt,deltas,x={}){
   for(const id in deltas){const a=A(id);if(a)a.balance=r2(a.balance+deltas[id])}
   const tx={id:uid(),d:x.d||Date.now(),label,sign,amt,deltas,kind:x.kind,cat:x.cat,auto:x.auto,rid:x.rid,note:x.note};S.tx.unshift(tx);
-  if(!x.quiet){S.tx.sort((p,q)=>q.d-p.d);save();closeS();render()}
+  if(!x.quiet){S.tx.sort((p,q)=>q.d-p.d);save();closeS();render();hap('ok')}
   return tx;
 }
 function doOp(kind){
@@ -645,11 +677,11 @@ function saveTx(id){
   if(k==='spend')t.cat=g('#e-cat');else delete t.cat;
   if(dv&&dv!==ymd(new Date(t.d)))t.d=dateTs(dv);
   t.label=mkLabel(t);
-  S.tx.sort((x,y)=>y.d-x.d);save();closeS();render();
+  S.tx.sort((x,y)=>y.d-x.d);save();closeS();render();hap('ok');
 }
 function delTx(id){
   if(!confirm('Əməliyyat silinsin və hesablar geri qaytarılsın?'))return;
-  rmTx(id);
+  rmTx(id);hap('tick');
 }
 function rmTx(id){
   const t=S.tx.find(x=>x.id===id);if(!t)return;
@@ -688,10 +720,11 @@ function importD(){
   const b=$('#box');let sy=0,sx=0,dy=0,ok=false;
   b.addEventListener('touchstart',e=>{const t=e.touches[0];ok=b.scrollTop<=0&&e.touches.length===1&&!typing()&&!e.target.closest('input,select,textarea');sy=t.clientY;sx=t.clientX;dy=0;b.style.transition='none'},{passive:true});
   b.addEventListener('touchmove',e=>{if(!ok)return;const t=e.touches[0];dy=t.clientY-sy;if(dy>12&&dy>Math.abs(t.clientX-sx))b.style.transform='translateY('+dy+'px)';else b.style.transform=''},{passive:true});
-  b.addEventListener('touchend',()=>{if(!ok)return;ok=false;const c=dy>110;b.style.transition='transform .18s';b.style.transform='';if(c)closeS();setTimeout(()=>{b.style.transition=''},200)},{passive:true});
+  b.addEventListener('touchend',()=>{if(!ok)return;ok=false;const c=dy>110;b.style.transition='transform .18s';b.style.transform='';if(c){closeS();hap('tick')}setTimeout(()=>{b.style.transition=''},200)},{passive:true});
 })();
 
-applyTheme();
+document.addEventListener('touchstart',()=>{},{passive:true});
+applyTheme();hapInit();
 runRules();render();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&runRules())render()});
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
