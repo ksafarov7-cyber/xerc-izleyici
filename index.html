@@ -109,8 +109,7 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 <script>
 const K='xerc-izleyici-v1';
 const $=s=>document.querySelector(s);
-const HK='xerc-hap';
-const hapOn=()=>{try{return localStorage.getItem(HK)!=='0'}catch(e){return true}};
+const hapOn=()=>true;
 // Android/Chrome: adi titrəyiş. iPhone: Safari bunu dəstəkləmir və iOS 26.5-dən skriptlə "switch" çevirmə yolu da bağlanıb;
 // yalnız barmağın birbaşa toxunduğu həqiqi <input type=checkbox switch> sistem "tık"ı verir.
 // Ona görə əsas düymələrin üstünə şəffaf həqiqi switch qoyulur: barmaq ona toxunur (tık), sonra düymənin öz əməli icra olunur.
@@ -327,14 +326,12 @@ function applyTheme(){
   const m=document.querySelector('meta[name=theme-color]');if(m)m.content=dark?'#0e141a':'#eef1f4';
 }
 function setOpt(k,v){S.opts[k]=!!v;if(k==='tpl'&&!v)tplEd=false;save()}
-function setHap(on){try{localStorage.setItem(HK,on?'1':'0')}catch(e){}if(on){decorate();hap('tick')}else hsOff()}
 function setTheme(v){try{localStorage.setItem(TH,v)}catch(e){}applyTheme();render()}
 try{matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyTheme)}catch(e){}
 function renderSet(){
   const th=getTheme();
   $('#app').innerHTML=seg()+`<h2>Görünüş</h2><div class="card"><div class="seg" style="margin:0">${[['auto','Avtomatik'],['light','İşıqlı'],['dark','Qaranlıq']].map(x=>`<button class="${th===x[0]?'on':''}" onclick="setTheme('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="note" style="margin:8px 2px 0">Avtomatik: telefonun rejimini izləyir.</div>
-  <div class="swrow" style="margin-top:12px"><span>Titrəyiş</span><input type="checkbox" switch id="hap-set" ${hapOn()?'checked':''} onchange="setHap(this.checked)"></div>
-  <div class="note" style="margin:6px 2px 0">iPhone-da düymələrə toxunanda sistem "tık"ı verilir. Sürüşdürmə jestlərində iPhone titrəyişə icazə vermir. Bu açar özü də toxunanda "tık" verməlidir, verməsə Parametrlər → Səslər və Haptika → Sistem Haptikasını yoxla.</div></div>
+</div>
   <h2>Ana səhifə</h2><div class="card"><div class="swrow"><span>Tez əlavə düymələri</span><input type="checkbox" switch ${S.opts.tpl?'checked':''} onchange="setOpt('tpl',this.checked)"></div><div class="note" style="margin:6px 2px 0">Açıq olanda Ana səhifədə tez-tez olunan xərclər üçün düymələr görünür. Söndürsən şablonlar silinmir, sadəcə gizlənir.</div></div>
   <h2>Kateqoriyalar <button onclick="openCat()">+ Yeni</button></h2><div class="card">`+S.cats.map((c,i)=>`<div class="acc" onclick="openCat(${i})"><div><div class="n">${esc(c)}</div><div class="t">${S.tx.filter(t=>catOf(t)===c).length} xərc</div></div><div class="t">›</div></div>`).join('')+`</div>
   <h2>Data</h2><div class="card"><div class="acc" onclick="exportD()"><div class="n">Nüsxə al</div></div><div class="acc" onclick="importD()"><div class="n">Nüsxəni yüklə</div></div><div class="acc" onclick="resetAll()"><div class="n neg">Bütün datanı sil</div></div></div>`;
