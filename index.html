@@ -118,7 +118,7 @@ function hap(kind){
   if(!hapOn())return;
   try{if(navigator.vibrate)navigator.vibrate(kind==='ok'?[12,50,12]:10)}catch(e){}
 }
-const HS='.fab,.tabs button,.seg button,.tpl,button.btn,.pnav button,.chips button,.ops button';
+const HS='.fab,.tabs button,.seg button,button.btn,.pnav button,.chips button,.ops button';
 let hsQ=0;
 function decorate(){
   hsQ=0;
@@ -159,7 +159,7 @@ function ins(id,o){const i=document.getElementById(id);i.value+=o;i.focus()}
 const amtF=(id,val,ph)=>`<input id="${id}" inputmode="decimal" autocomplete="off" value="${val}" placeholder="${ph||'0.00'}" onblur="calc(this)"><div class="ops">${['+','−','×','÷'].map(o=>`<button type="button" onclick="ins('${id}','${o}')">${o}</button>`).join('')}</div>`;
 function fixMoves(d){(d.tx||[]).forEach(t=>{const mv=t.kind?t.kind==='move':(t.sign!=='+'&&t.sign!=='−');if(mv&&t.note===undefined){t.note='';if(!String(t.label).startsWith('Transfer · '))t.label='Transfer · '+t.label}})}
 function norm(d){
-  fixMoves(d);d.rules=d.rules||[];d.tpls=d.tpls||[];d.last=d.last||{};d.cats=d.cats||['Transport','Yemək və içmək','Ev','Geyim','Digər'];if(d.v===2)return d;
+  fixMoves(d);d.rules=d.rules||[];d.tpls=d.tpls||[];d.last=d.last||{};d.opts=d.opts||{tpl:d.tpls.length>0};d.cats=d.cats||['Transport','Yemək və içmək','Ev','Geyim','Digər'];if(d.v===2)return d;
   const ng=new Set(d.acc.filter(a=>a.type==='exp').map(a=>a.id));
   d.acc.forEach(a=>{if(ng.has(a.id))a.balance=-a.balance;delete a.type});
   d.tx.forEach(t=>{for(const k in t.deltas)if(ng.has(k))t.deltas[k]=-t.deltas[k]});
@@ -326,6 +326,7 @@ function applyTheme(){
   let dark=v==='dark';if(v==='auto'){try{dark=matchMedia('(prefers-color-scheme:dark)').matches}catch(e){}}
   const m=document.querySelector('meta[name=theme-color]');if(m)m.content=dark?'#0e141a':'#eef1f4';
 }
+function setOpt(k,v){S.opts[k]=!!v;if(k==='tpl'&&!v)tplEd=false;save()}
 function setHap(on){try{localStorage.setItem(HK,on?'1':'0')}catch(e){}if(on){decorate();hap('tick')}else hsOff()}
 function setTheme(v){try{localStorage.setItem(TH,v)}catch(e){}applyTheme();render()}
 try{matchMedia('(prefers-color-scheme:dark)').addEventListener('change',applyTheme)}catch(e){}
@@ -334,6 +335,7 @@ function renderSet(){
   $('#app').innerHTML=seg()+`<h2>Görünüş</h2><div class="card"><div class="seg" style="margin:0">${[['auto','Avtomatik'],['light','İşıqlı'],['dark','Qaranlıq']].map(x=>`<button class="${th===x[0]?'on':''}" onclick="setTheme('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="note" style="margin:8px 2px 0">Avtomatik: telefonun rejimini izləyir.</div>
   <div class="swrow" style="margin-top:12px"><span>Titrəyiş</span><input type="checkbox" switch id="hap-set" ${hapOn()?'checked':''} onchange="setHap(this.checked)"></div>
   <div class="note" style="margin:6px 2px 0">iPhone-da düymələrə toxunanda sistem "tık"ı verilir. Sürüşdürmə jestlərində iPhone titrəyişə icazə vermir. Bu açar özü də toxunanda "tık" verməlidir, verməsə Parametrlər → Səslər və Haptika → Sistem Haptikasını yoxla.</div></div>
+  <h2>Ana səhifə</h2><div class="card"><div class="swrow"><span>Tez əlavə düymələri</span><input type="checkbox" switch ${S.opts.tpl?'checked':''} onchange="setOpt('tpl',this.checked)"></div><div class="note" style="margin:6px 2px 0">Açıq olanda Ana səhifədə tez-tez olunan xərclər üçün düymələr görünür. Söndürsən şablonlar silinmir, sadəcə gizlənir.</div></div>
   <h2>Kateqoriyalar <button onclick="openCat()">+ Yeni</button></h2><div class="card">`+S.cats.map((c,i)=>`<div class="acc" onclick="openCat(${i})"><div><div class="n">${esc(c)}</div><div class="t">${S.tx.filter(t=>catOf(t)===c).length} xərc</div></div><div class="t">›</div></div>`).join('')+`</div>
   <h2>Data</h2><div class="card"><div class="acc" onclick="exportD()"><div class="n">Nüsxə al</div></div><div class="acc" onclick="importD()"><div class="n">Nüsxəni yüklə</div></div><div class="acc" onclick="resetAll()"><div class="n neg">Bütün datanı sil</div></div></div>`;
 }
@@ -500,8 +502,9 @@ function delAcc(id){
 
 // ---- Tez əlavə (şablonlar)
 const tplHtml=()=>{
+  if(!S.opts.tpl)return '';
   const hd=`<h2>Tez əlavə <span>${S.tpls.length?`<button onclick="tplEd=!tplEd;render()">${tplEd?'Hazır':'Dəyişdir'}</button>`:''}<button onclick="openTpl()">+ Yeni</button></span></h2>`;
-  if(!S.tpls.length)return hd+`<div class="card"><div class="empty">Tez-tez etdiyin xərci (məs. qəhvə 3.50 ₼) bura əlavə et, bir toxunuşla yazılsın.</div></div>`;
+  if(!S.tpls.length)return hd+`<div class="card"><div class="empty">Tez-tez etdiyin xərci (məs. qəhvə 3.50 ₼) bura əlavə et, toxunub təsdiq etməklə yazılsın.</div></div>`;
   return hd+`<div class="tpls ${tplEd?'ed':''}">`+S.tpls.map(t=>{const a=A(t.acc);return `<button class="tpl" onclick="${tplEd?`openTpl('${t.id}')`:`quickAdd('${t.id}')`}"><b>${esc(t.name)}</b><span class="num">${fmt(t.amt)}</span><small>${esc(t.cat)}${a?' · '+esc(a.name):''}</small></button>`}).join('')+`</div>`+(tplEd?`<div class="note" style="margin:-4px 4px 10px">Dəyişmək üçün şablona toxun.</div>`:'');
 };
 function openTpl(id){
@@ -514,7 +517,7 @@ function openTpl(id){
   <label>Kateqoriya</label><select id="t-cat">${S.cats.map(c=>`<option ${t&&c===t.cat?'selected':''}>${esc(c)}</option>`).join('')}</select>
   <label>Hansı hesabdan</label><select id="t-acc">${opts(R,t&&t.acc)}</select>
   <label>Xərc büdcəsindən də çıx</label><select id="t-bud"><option value="">Yox</option>${opts(B,t?t.bud:(B[0]||{}).id)}</select>
-  <div class="note">Şablona toxunanda xərc bu gün üçün dərhal əlavə olunur. 5 saniyə ərzində "Ləğv et" ilə geri ala bilərsən.</div>
+  <div class="note">Şablona toxunanda əvvəl təsdiq soruşulur, OK desən xərc bu gün üçün əlavə olunur. Sonra 5 saniyə ərzində "Ləğv et" ilə geri ala bilərsən.</div>
   <button class="btn" onclick="saveTpl('${id||''}')">${t?'Yadda saxla':'Yarat'}</button>${t?`<button class="btn alt" onclick="delTpl('${id}')">Sil</button>`:''}`);
 }
 function saveTpl(id){
@@ -531,6 +534,8 @@ function delTpl(id){
 function quickAdd(id){
   const t=S.tpls.find(x=>x.id===id),a=t&&A(t.acc);
   if(!a)return alert('Bu şablonun hesabı silinib. Şablonu dəyişib hesab seç.');
+  const bb=t.bud?A(t.bud):null;
+  if(!confirm(`${t.name} · ${fmt(t.amt)}\n${a.name}${bb?' → '+bb.name:''} · ${t.cat}\n\nBu xərc bu gün üçün əlavə olunsun?`))return;
   const b=t.bud?A(t.bud):null,d={[a.id]:-t.amt};if(b)d[b.id]=-t.amt;
   const x=post(`${t.name} · ${a.name}${b?' → '+b.name:''}`,'−',t.amt,d,{kind:'spend',cat:t.cat,note:t.name});
   toast(`${esc(t.name)} · ${fmt(t.amt)} əlavə olundu`,x.id);
@@ -596,7 +601,7 @@ function openOp(kind){
     <label>Kateqoriya</label><select id="f-catg" onchange="onCatManual(this)">${S.cats.map(c=>`<option ${c===L.cat?'selected':''}>${c}</option>`).join('')}</select>
     <div class="note" id="f-hint" hidden>Kateqoriya əvvəlki eyni qeydə görə seçildi.</div>
     <label>Xərc büdcəsindən də çıx</label><select id="f-cat"><option value="">Yox</option>${opts(B,bs)}</select>
-    <label class="chk"><input type="checkbox" id="f-tpl"> Tez əlavə üçün şablon kimi saxla</label>
+    ${S.opts.tpl?`<label class="chk"><input type="checkbox" id="f-tpl"> Tez əlavə üçün şablon kimi saxla</label>`:''}
     <div class="note">Büdcə seçsən (məs. Aylıq xərc), məbləğ ondan da azalır. Hesabda pul çatmasa, qalıq qırmızı olur.</div>`;}
   if(kind==='move'){
     if(R.length<2)return alert('Transfer üçün ən azı iki hesab lazımdır (büdcə hesabları transferdə iştirak etmir).');
@@ -625,7 +630,7 @@ function doOp(kind){
     const a=A($('#f-from').value),c=$('#f-cat').value?A($('#f-cat').value):null;
     const d={[a.id]:-amt};if(c)d[c.id]=-amt;
     S.last={...S.last,from:a.id,cat:$('#f-catg').value,bud:c?c.id:''};
-    if($('#f-tpl').checked)S.tpls.push({id:uid(),name:note||$('#f-catg').value,amt,cat:$('#f-catg').value,acc:a.id,bud:c?c.id:''});
+    if($('#f-tpl')&&$('#f-tpl').checked)S.tpls.push({id:uid(),name:note||$('#f-catg').value,amt,cat:$('#f-catg').value,acc:a.id,bud:c?c.id:''});
     post(`${note||'Xərc'} · ${a.name}${c?' → '+c.name:''}`,'−',amt,d,{kind:'spend',cat:$('#f-catg').value,d:D,note});
   }
   if(kind==='move'){
