@@ -96,6 +96,7 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 .hs{position:absolute;left:0;top:0;width:100%;height:100%;margin:0;padding:0;opacity:0;z-index:2;cursor:pointer}
 [data-hs]:not(.fab){position:relative}
 .swrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-weight:600}
+#kbproxy{position:fixed;left:0;top:40%;width:1px;height:1px;opacity:0;border:0;padding:0;font-size:16px;pointer-events:none}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
 </style>
 </head>
@@ -103,6 +104,7 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 <div id="app"></div>
 <button class="fab" onclick="openOp('spend')">+ Əməliyyat</button>
 <div class="toast" id="toast" hidden></div>
+<input id="kbproxy" inputmode="decimal" autocomplete="off" tabindex="-1" aria-hidden="true">
 <div class="warn" id="warn" hidden><span>Data yadda saxlanmadı! Nüsxə al, yoxsa itə bilər.</span><button onclick="exportD()">Nüsxə al</button></div>
 <div class="sheet" id="sheet" hidden onclick="if(event.target===this)sheetTap()"><div class="box" id="box"></div></div>
 
@@ -136,6 +138,12 @@ document.addEventListener('click',e=>{
   if(!(t&&t.classList&&t.classList.contains('hs')))return;
   e.stopPropagation();
   const h=t.parentElement;
+  // yeni əməliyyat pəncərəsi: klaviatura yalnız toxunuşun daxilində fokusla açılır, ona görə əvvəlcə gizli xana fokuslanır
+  const oc=h&&h.getAttribute('onclick')||'';
+  if(oc.startsWith('openOp(')){
+    const kp=document.getElementById('kbproxy');
+    if(kp){kp.focus({preventScroll:true});setTimeout(()=>{if(document.activeElement===kp)kp.blur()},900)}
+  }
   setTimeout(()=>{if(h&&!h.disabled)h.click()},0);
 },true);
 let saveBad=false;
@@ -442,7 +450,8 @@ function render(){
 
 function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
 function closeS(){$('#sheet').hidden=true}
-const typing=()=>{const a=document.activeElement;return !!(a&&!a.classList.contains('hs')&&$('#box').contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))};
+const kbUp=()=>{const v=window.visualViewport;return v?(window.innerHeight-v.height)>100:true};
+const typing=()=>{const a=document.activeElement;return !!(a&&!a.classList.contains('hs')&&$('#box').contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&kbUp())};
 // klaviatura açıqdırsa kənara toxunuş yalnız klaviaturanı bağlayır, pəncərəni yox
 function sheetTap(){if(typing()){document.activeElement.blur();return}closeS()}
 const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə ':a.balance<0?'borc ':''}${fmt(a.balance)})</option>`).join('');
@@ -731,9 +740,9 @@ function importD(){
   },{passive:true});
   // alt pəncərəni (sheet) aşağı çəkib bağlamaq
   const b=$('#box');let sy=0,sx=0,dy=0,ok=false;
-  b.addEventListener('touchstart',e=>{const t=e.touches[0];ok=b.scrollTop<=0&&e.touches.length===1&&!typing()&&!e.target.closest('input:not(.hs),select,textarea');sy=t.clientY;sx=t.clientX;dy=0;b.style.transition='none'},{passive:true});
+  b.addEventListener('touchstart',e=>{const t=e.touches[0];ok=b.scrollTop<=0&&e.touches.length===1&&!e.target.closest('input:not(.hs),select,textarea');sy=t.clientY;sx=t.clientX;dy=0;b.style.transition='none'},{passive:true});
   b.addEventListener('touchmove',e=>{if(!ok)return;const t=e.touches[0];dy=t.clientY-sy;if(dy>12&&dy>Math.abs(t.clientX-sx))b.style.transform='translateY('+dy+'px)';else b.style.transform=''},{passive:true});
-  b.addEventListener('touchend',()=>{if(!ok)return;ok=false;const c=dy>110;b.style.transition='transform .18s';b.style.transform='';if(c){closeS();hap('tick')}setTimeout(()=>{b.style.transition=''},200)},{passive:true});
+  b.addEventListener('touchend',()=>{if(!ok)return;ok=false;const c=dy>110;b.style.transition='transform .18s';b.style.transform='';if(c){if(typing())document.activeElement.blur();else{closeS();hap('tick')}}setTimeout(()=>{b.style.transition=''},200)},{passive:true});
 })();
 
 document.addEventListener('touchstart',()=>{},{passive:true});
