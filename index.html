@@ -552,7 +552,16 @@ function renderMain(){
   <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div>${cp?`<small style="display:block;margin-top:10px;font-size:12px;opacity:.7">${cp[0].toUpperCase()+cp.slice(1)} ümumi məbləğdən çıxılır.</small>`:''}</div>`;
   if(dailyAccs.length){
     h+=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><p>Bu gün də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
-    dailyAccs.forEach(a=>{const ok=a.balance>0;h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${ok?'':'neg'}">${fmt(ok?a.balance/dl:0)}<small> / gün</small></span></div>`});
+    const tdy=ymd(new Date());
+    dailyAccs.forEach(a=>{
+      const ok=a.balance>0;
+      const spent=r2(S.tx.reduce((q,t)=>{if(txKind(t)!=='spend'||ymd(new Date(t.d))!==tdy)return q;const d=t.deltas&&t.deltas[a.id];return d<0?q-d:q},0));
+      const L=Math.max(0,r2((a.balance+spent)/dl)),over=spent>L+0.004,left=r2(L-spent);
+      const pct=L>0?Math.min(100,spent/L*100):(spent>0?100:0);
+      const col=over?'var(--neg)':pct>=80?'#E08A00':'var(--pos)';
+      h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${L>0?'':'neg'}">${fmt(L)}<small> / gün</small></span></div>
+      <div style="padding:0 0 10px"><div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px"><span class="num"><span style="color:var(--mute)">Bu gün:</span> <b>${fmt(spent)}</b> <span style="color:var(--mute)">/ ${fmt(L)}</span></span><span class="num" style="color:${over?'var(--neg)':'var(--mute)'}">${over?'limit aşılıb · +'+fmt(spent-L):fmt(left)+' qalıb'}</span></div><div class="bar" style="height:8px"><i style="width:${pct.toFixed(1)}%;min-width:0;background:${col}"></i></div></div>`;
+    });
     h+=`</div>`;
   }
   h+=tplHtml();
