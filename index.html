@@ -103,22 +103,16 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
 .sw{position:relative;isolation:isolate;overflow:hidden;border-top:1px solid var(--line);transition:max-height .22s ease,opacity .22s ease;max-height:140px}
 .sw:first-child,.dayh+.sw{border-top:0}
-.sw .tx{border-top:0;background:var(--card);position:relative;z-index:1;touch-action:pan-y;transition:transform .22s ease}
-.sw .tx.drag{transition:none}
+.sw .swc{border-top:0;background:var(--card);position:relative;z-index:1;touch-action:pan-y;transition:transform .22s ease}
+.sw .swc.drag{transition:none}
 .sw.gone{max-height:0;opacity:0;border-top-width:0}
 .swdel{position:absolute;right:0;top:0;bottom:0;width:84px;border:0;background:#FF3B30;color:#fff;display:flex;align-items:center;justify-content:center;padding:0;border-radius:0}
 .swdel svg{width:24px;height:24px}
 .sw:not(.act) .swdel{visibility:hidden}
 .fab{z-index:8}
-.lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
-.lock svg{width:72px;height:72px;color:var(--ink)}
-.lock h3{margin:0;font-size:20px}.lock p{margin:0;color:var(--mute);font-size:14px;max-width:280px}
-.lock .btn{width:auto;min-width:200px;padding:14px 28px;margin-top:6px}
 </style>
 </head>
 <body>
-<div class="lock" id="lock" hidden onclick="unlockApp()" style="cursor:pointer"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17V11a5 5 0 0 1 5-5h6M31 6h6a5 5 0 0 1 5 5v6M42 31v6a5 5 0 0 1-5 5h-6M17 42h-6a5 5 0 0 1-5-5v-6"/><path d="M17 19v3M31 19v3M24 19v7a2 2 0 0 1-2 2M17 33c4 3.5 10 3.5 14 0"/></svg><h3>Xərc İzləyici</h3><p id="lockmsg">Açmaq üçün ekrana toxun</p><button class="btn" type="button">Face ID ilə aç</button></div>
-<script>try{if(localStorage.getItem('xerc-lock'))document.getElementById('lock').hidden=false}catch(e){}</script>
 <div id="app"></div>
 <button class="fab" onclick="openOp('spend')">+ Əməliyyat</button>
 <div class="toast" id="toast" hidden></div>
@@ -214,7 +208,7 @@ function quick(k){const n=new Date(),t=ymd(n);
   else if(k==='week'){const x=new Date(n);x.setDate(n.getDate()-((n.getDay()+6)%7));F.from=ymd(x);F.to=t}
   else{F.from=ymd(new Date(n.getFullYear(),n.getMonth(),1));F.to=t}
   txLim=300;render()}
-const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="sw"><button class="swdel" aria-label="Sil" onclick="swDel('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button><div class="tx" data-id="${t.id}" onclick="swTap('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${k==='add'?'+':''}${fmt(t.amt)}</span></div></div></div>`};
+const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="sw"><button class="swdel" aria-label="Sil" onclick="swDel('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button><div class="tx swc" data-id="${t.id}" onclick="swTap('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${k==='add'?'+':''}${fmt(t.amt)}</span></div></div></div>`};
 function dayGroups(l,lim=300){
   if(!l.length)return '<div class="card"><div class="empty">Bu filtrə uyğun əməliyyat yoxdur.</div></div>';
   const g=[];[...l].sort((a,b)=>b.d-a.d).slice(0,lim).forEach(t=>{const k=ymd(new Date(t.d));let x=g[g.length-1];if(!x||x.k!==k){x={k,l:[]};g.push(x)}x.l.push(t)});
@@ -429,9 +423,8 @@ function renderSet(){
   $('#app').innerHTML=seg()+`<h2>Görünüş</h2><div class="card"><div class="seg" style="margin:0">${[['auto','Avtomatik'],['light','İşıqlı'],['dark','Qaranlıq']].map(x=>`<button class="${th===x[0]?'on':''}" onclick="setTheme('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="note" style="margin:8px 2px 0">Avtomatik: telefonun rejimini izləyir.</div>
 </div>
   <h2>Ana səhifə</h2><div class="card"><div class="swrow"><span>Tez əlavə düymələri</span><input type="checkbox" switch ${S.opts.tpl?'checked':''} onchange="setOpt('tpl',this.checked)"></div><div class="note" style="margin:6px 2px 0">Açıq olanda Ana səhifədə tez-tez olunan xərclər üçün düymələr görünür. Söndürsən şablonlar silinmir, sadəcə gizlənir.</div></div>
-  <h2>Kateqoriyalar <button onclick="openCat()">+ Yeni</button></h2><div class="card">`+S.cats.map((c,i)=>`<div class="acc" onclick="openCat(${i})"><div><div class="n">${esc(c)}</div><div class="t">${S.tx.filter(t=>catOf(t)===c).length} xərc</div></div><div class="t">›</div></div>`).join('')+`</div>
-  <h2>Təhlükəsizlik</h2><div class="card"><div class="swrow"><span>Face ID kilidi</span><input type="checkbox" switch ${lockOn()?'checked':''} onchange="toggleLock(this)"></div><div class="note" style="margin:6px 2px 0">Açıq olanda proqram açılanda və arxa fondan qayıdanda Face ID (və ya telefonun kodu) tələb olunur.</div></div>
-  <h2>Data</h2><div class="card"><div class="acc" onclick="exportD()"><div class="n">Nüsxə al</div></div><div class="acc" onclick="importD()"><div class="n">Nüsxəni yüklə</div></div><div class="acc" onclick="resetAll()"><div class="n neg">Bütün datanı sil</div></div></div>`;
+  <h2>Kateqoriyalar <button onclick="openCat()">+ Yeni</button></h2><div class="card">`+S.cats.map((c,i)=>{const r_=`<div class="acc" onclick="openCat(${i})"><div><div class="n">${esc(c)}</div><div class="t">${S.tx.filter(t=>catOf(t)===c).length} xərc</div></div><div class="t">›</div></div>`;return c==='Digər'?r_:swW(r_,`delCat(${i})`)}).join('')+`</div>
+    <h2>Data</h2><div class="card"><div class="acc" onclick="exportD()"><div class="n">Nüsxə al</div></div><div class="acc" onclick="importD()"><div class="n">Nüsxəni yüklə</div></div><div class="acc" onclick="resetAll()"><div class="n neg">Bütün datanı sil</div></div></div>`;
 }
 function openCat(i){
   const c=i===undefined?'':S.cats[i],fix=c==='Digər';
@@ -458,7 +451,7 @@ function resetAll(){
   S=norm({acc:[],tx:[],rules:[],v:2});save();NAV.length=0;view='home';render();
 }
 function sched(r){return r.freq==='daily'?'hər gün':r.freq==='weekly'?'həftədə: '+WD.filter(w=>r.days.includes(w[1])).map(w=>w[0]).join(', '):'hər ayın '+r.dom+'-i'}
-const rulesHtml=()=>`<h2>Avtomatik xərclər <button onclick="openRule()">+ Yeni</button></h2><div class="card">`+(S.rules.map(r=>`<div class="acc" onclick="openRuleEdit('${r.id}')"><div><div class="n">${esc(r.name)}</div><div class="t">${sched(r)} · ${esc(r.cat)}</div></div><div class="b num neg">${fmt(r.amt)}</div></div>`).join('')||`<div class="empty">Məsələn: hər gün Transport 2.40 ₼.</div>`)+`</div>`;
+const rulesHtml=()=>`<h2>Avtomatik xərclər <button onclick="openRule()">+ Yeni</button></h2><div class="card">`+(S.rules.map(r=>{const r_=`<div class="acc" onclick="openRuleEdit('${r.id}')"><div><div class="n">${esc(r.name)}</div><div class="t">${sched(r)} · ${esc(r.cat)}</div></div><div class="b num neg">${fmt(r.amt)}</div></div>`;return swW(r_,`delRule('${r.id}')`)}).join('')||`<div class="empty">Məsələn: hər gün Transport 2.40 ₼.</div>`)+`</div>`;
 function openRule(id){
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   if(!R.length)return alert('Əvvəlcə pul hesabı yarat.');
@@ -529,7 +522,7 @@ function render(){
   }
   h+=tplHtml();
   h+=`<h2>Hesablar <span>${S.acc.length>1?`<button onclick="toggleSort()">${sortMode?'Hazır':'Sırala'}</button>`:''}<button onclick="openAcc()">+ Yeni</button></span></h2><div class="card">`;
-  h+=S.acc.map((a,i)=>`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`).join('')
+  h+=S.acc.map((a,i)=>{const r_=`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`;return sortMode?r_:swW(r_,`delAcc('${a.id}')`)}).join('')
     ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div>`+rulesHtml()+`<h2>Son əməliyyatlar <button onclick="setView('tx')">Hamısı</button></h2><div class="card">`;
   h+=S.tx.slice(0,5).map(txRow).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
@@ -845,22 +838,30 @@ function importD(){
 
 // ---- Sola çəkib silmək (iPhone Mail kimi)
 let swMoved=0;
+const swW=(row,del)=>`<div class="sw"><button class="swdel" aria-label="Sil" onclick="swDelX(()=>${del})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>${row.replace('class="acc"','class="acc swc"')}</div>`;
+function swDelX(f){hap('tick');f();swClose()}
+document.addEventListener('click',e=>{
+  const r=e.target.closest&&e.target.closest('.sw .swc');if(!r)return;
+  const open=[...document.querySelectorAll('.sw .swc')].some(x=>x.style.transform);
+  if(open||Date.now()-swMoved<350){e.stopPropagation();e.preventDefault();if(open)swClose()}
+},true);
+
 function swHide(r){setTimeout(()=>{if(!r.style.transform&&r.parentNode)r.parentNode.classList.remove('act')},260)}
-function swClose(except){document.querySelectorAll('.sw .tx').forEach(r=>{if(r!==except&&r.style.transform){r.classList.remove('drag');r.style.transform='';swHide(r)}})}
+function swClose(except){document.querySelectorAll('.sw .swc').forEach(r=>{if(r!==except&&r.style.transform){r.classList.remove('drag');r.style.transform='';swHide(r)}})}
 function swTap(id){
   if(Date.now()-swMoved<350)return;
-  if([...document.querySelectorAll('.sw .tx')].some(r=>r.style.transform)){swClose();return}
+  if([...document.querySelectorAll('.sw .swc')].some(r=>r.style.transform)){swClose();return}
   openTxEdit(id);
 }
 function swDel(id){
-  const r=document.querySelector('.sw .tx[data-id="'+id+'"]'),w=r&&r.parentNode;
+  const r=document.querySelector('.sw .swc[data-id="'+id+'"]'),w=r&&r.parentNode;
   hap('tick');
   if(w){w.style.maxHeight=w.offsetHeight+'px';void w.offsetWidth;w.classList.add('gone');setTimeout(()=>rmTx(id),230)}else rmTx(id);
 }
 (function(){
   const W=84;let row=null,x0=0,y0=0,base=0,dx=0,drag=false,dec=false;
   document.addEventListener('touchstart',e=>{
-    const r=e.target.closest&&e.target.closest('.sw .tx');
+    const r=e.target.closest&&e.target.closest('.sw .swc');
     if(!r||e.touches.length!==1||e.touches[0].clientX<=28){row=null;if(!r)swClose();return}
     swClose(r);row=r;const t=e.touches[0];x0=t.clientX;y0=t.clientY;base=r.style.transform?-W:0;dx=0;drag=false;dec=false;
   },{passive:true});
@@ -879,61 +880,8 @@ function swDel(id){
   document.addEventListener('touchcancel',()=>{if(row){const r=row;r.classList.remove('drag');r.style.transform='';swHide(r);row=null}},{passive:true});
 })();
 
-// ---- Face ID (WebAuthn, yalnız bu cihazda)
-const LK='xerc-lock';
-const lockOn=()=>{try{return !!localStorage.getItem(LK)}catch(e){return false}};
-const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
-const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
-let authing=false,awayAt=0;
-async function toggleLock(el){
-  if(!el.checked){
-    if(!(await verifyBio()).ok){el.checked=true;return}
-    try{localStorage.removeItem(LK)}catch(e){}
-    return;
-  }
-  try{
-    if(!window.PublicKeyCredential||!navigator.credentials)throw new Error('nosupport');
-    authing=true;
-    const c=await navigator.credentials.create({publicKey:{
-      challenge:rnd(32),rp:{name:'Xərc İzləyici'},
-      user:{id:rnd(16),name:'xerc',displayName:'Xərc İzləyici'},
-      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
-      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},
-      timeout:60000}});
-    localStorage.setItem(LK,b64(c.rawId));hap('ok');
-  }catch(e){
-    el.checked=false;
-    if(e&&e.message==='nosupport')alert('Bu cihaz/brauzer Face ID kilidini dəstəkləmir. Tətbiq https ilə açılmalıdır.');
-    else if(!e||e.name!=='NotAllowedError')alert('Face ID qurulmadı: '+((e&&e.message)||e));
-  }finally{authing=false;awayAt=Date.now()}
-}
-async function verifyBio(){
-  const id=(()=>{try{return localStorage.getItem(LK)}catch(e){return null}})();
-  if(!id)return {ok:true};
-  authing=true;
-  try{
-    await navigator.credentials.get({publicKey:{challenge:rnd(32),allowCredentials:[{type:'public-key',id:unb64(id),transports:['internal']}],userVerification:'required',timeout:60000}});
-    return {ok:true};
-  }catch(e){return {ok:false,err:e}}
-  finally{authing=false;awayAt=Date.now()}
-}
-async function unlockApp(){
-  if(authing)return;
-  const m=$('#lockmsg'),r=await verifyBio();
-  if(r.ok){$('#lock').hidden=true;m.textContent='Açmaq üçün ekrana toxun';hap('ok')}
-  else m.textContent='Təsdiq alınmadı. Ekrana toxunub yenidən cəhd et.';
-}
-function lockNow(){if(lockOn()){$('#lock').hidden=false}}
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){if(!authing)awayAt=Date.now();return}
-  if(lockOn()&&!authing&&awayAt&&Date.now()-awayAt>10000){lockNow()}
-});
-if(lockOn())$('#lock').hidden=false;
-
+try{localStorage.removeItem('xerc-lock')}catch(e){}
 let popAt=0;
-try{history.replaceState({b:0},'');history.pushState({b:1},'')}catch(e){}
-addEventListener('popstate',()=>{popAt++;doBack();try{history.pushState({b:1},'')}catch(e){}});
 document.addEventListener('touchstart',()=>{},{passive:true});
 try{new MutationObserver(()=>{if(!hsQ){hsQ=1;requestAnimationFrame(decorate)}}).observe(document.body,{childList:true,subtree:true})}catch(e){}
 applyTheme();decorate();
