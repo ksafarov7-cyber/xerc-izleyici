@@ -101,13 +101,15 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 [data-hs]:not(.fab){position:relative}
 .swrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-weight:600}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
-.sw{position:relative;overflow:hidden;border-top:1px solid var(--line);transition:max-height .22s ease,opacity .22s ease;max-height:140px}
+.sw{position:relative;isolation:isolate;overflow:hidden;border-top:1px solid var(--line);transition:max-height .22s ease,opacity .22s ease;max-height:140px}
 .sw:first-child,.dayh+.sw{border-top:0}
-.sw .tx{border-top:0;background:var(--card);position:relative;z-index:1;touch-action:pan-y;transition:transform .22s ease;will-change:transform}
+.sw .tx{border-top:0;background:var(--card);position:relative;z-index:1;touch-action:pan-y;transition:transform .22s ease}
 .sw .tx.drag{transition:none}
 .sw.gone{max-height:0;opacity:0;border-top-width:0}
 .swdel{position:absolute;right:0;top:0;bottom:0;width:84px;border:0;background:#FF3B30;color:#fff;display:flex;align-items:center;justify-content:center;padding:0;border-radius:0}
 .swdel svg{width:24px;height:24px}
+.sw:not(.act) .swdel{visibility:hidden}
+.fab{z-index:8}
 .lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
 .lock svg{width:72px;height:72px;color:var(--ink)}
 .lock h3{margin:0;font-size:20px}.lock p{margin:0;color:var(--mute);font-size:14px;max-width:280px}
@@ -115,7 +117,7 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 </style>
 </head>
 <body>
-<div class="lock" id="lock" hidden><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17V11a5 5 0 0 1 5-5h6M31 6h6a5 5 0 0 1 5 5v6M42 31v6a5 5 0 0 1-5 5h-6M17 42h-6a5 5 0 0 1-5-5v-6"/><path d="M17 19v3M31 19v3M24 19v7a2 2 0 0 1-2 2M17 33c4 3.5 10 3.5 14 0"/></svg><h3>Xərc İzləyici</h3><p id="lockmsg">Davam etmək üçün Face ID ilə təsdiq et</p><button class="btn" onclick="unlockApp()">Face ID ilə aç</button></div>
+<div class="lock" id="lock" hidden onclick="unlockApp()" style="cursor:pointer"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17V11a5 5 0 0 1 5-5h6M31 6h6a5 5 0 0 1 5 5v6M42 31v6a5 5 0 0 1-5 5h-6M17 42h-6a5 5 0 0 1-5-5v-6"/><path d="M17 19v3M31 19v3M24 19v7a2 2 0 0 1-2 2M17 33c4 3.5 10 3.5 14 0"/></svg><h3>Xərc İzləyici</h3><p id="lockmsg">Açmaq üçün ekrana toxun</p><button class="btn" type="button">Face ID ilə aç</button></div>
 <script>try{if(localStorage.getItem('xerc-lock'))document.getElementById('lock').hidden=false}catch(e){}</script>
 <div id="app"></div>
 <button class="fab" onclick="openOp('spend')">+ Əməliyyat</button>
@@ -843,7 +845,8 @@ function importD(){
 
 // ---- Sola çəkib silmək (iPhone Mail kimi)
 let swMoved=0;
-function swClose(except){document.querySelectorAll('.sw .tx').forEach(r=>{if(r!==except&&r.style.transform){r.classList.remove('drag');r.style.transform=''}})}
+function swHide(r){setTimeout(()=>{if(!r.style.transform&&r.parentNode)r.parentNode.classList.remove('act')},260)}
+function swClose(except){document.querySelectorAll('.sw .tx').forEach(r=>{if(r!==except&&r.style.transform){r.classList.remove('drag');r.style.transform='';swHide(r)}})}
 function swTap(id){
   if(Date.now()-swMoved<350)return;
   if([...document.querySelectorAll('.sw .tx')].some(r=>r.style.transform)){swClose();return}
@@ -863,7 +866,7 @@ function swDel(id){
   },{passive:true});
   document.addEventListener('touchmove',e=>{
     if(!row)return;const t=e.touches[0],mx=t.clientX-x0,my=t.clientY-y0;
-    if(!dec){if(Math.abs(mx)<8&&Math.abs(my)<8)return;dec=true;drag=Math.abs(mx)>Math.abs(my);if(drag)row.classList.add('drag')}
+    if(!dec){if(Math.abs(mx)<8&&Math.abs(my)<8)return;dec=true;drag=Math.abs(mx)>Math.abs(my);if(drag){row.classList.add('drag');row.parentNode.classList.add('act')}}
     if(!drag)return;
     let v=base+mx;if(v>0)v=0;if(v<-W)v=-W-Math.sqrt(-W-v)*3;
     dx=v;row.style.transform='translateX('+v+'px)';
@@ -871,9 +874,9 @@ function swDel(id){
   document.addEventListener('touchend',()=>{
     if(!row)return;const r=row;row=null;
     if(!drag)return;swMoved=Date.now();r.classList.remove('drag');
-    if(dx<-W/2){r.style.transform='translateX(-'+W+'px)';hap('tick')}else r.style.transform='';
+    if(dx<-W/2){r.style.transform='translateX(-'+W+'px)';hap('tick')}else{r.style.transform='';swHide(r)}
   },{passive:true});
-  document.addEventListener('touchcancel',()=>{if(row){row.classList.remove('drag');row.style.transform='';row=null}},{passive:true});
+  document.addEventListener('touchcancel',()=>{if(row){const r=row;r.classList.remove('drag');r.style.transform='';swHide(r);row=null}},{passive:true});
 })();
 
 // ---- Face ID (WebAuthn, yalnız bu cihazda)
@@ -916,16 +919,17 @@ async function verifyBio(){
   finally{authing=false;awayAt=Date.now()}
 }
 async function unlockApp(){
+  if(authing)return;
   const m=$('#lockmsg'),r=await verifyBio();
-  if(r.ok){$('#lock').hidden=true;m.textContent='Davam etmək üçün Face ID ilə təsdiq et';hap('ok')}
-  else m.textContent='Təsdiq alınmadı. Yenidən cəhd et.';
+  if(r.ok){$('#lock').hidden=true;m.textContent='Açmaq üçün ekrana toxun';hap('ok')}
+  else m.textContent='Təsdiq alınmadı. Ekrana toxunub yenidən cəhd et.';
 }
 function lockNow(){if(lockOn()){$('#lock').hidden=false}}
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){if(!authing)awayAt=Date.now();return}
-  if(lockOn()&&!authing&&awayAt&&Date.now()-awayAt>10000){lockNow();unlockApp()}
+  if(lockOn()&&!authing&&awayAt&&Date.now()-awayAt>10000){lockNow()}
 });
-if(lockOn()){$('#lock').hidden=false;setTimeout(unlockApp,350)}
+if(lockOn())$('#lock').hidden=false;
 
 let popAt=0;
 try{history.replaceState({b:0},'');history.pushState({b:1},'')}catch(e){}
