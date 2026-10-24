@@ -2,7 +2,7 @@
 <html lang="az">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -56,7 +56,7 @@ h2 span{display:flex;gap:16px}
 @media(prefers-reduced-motion:reduce){.box{animation:none}}
 .box h3{margin:0 0 12px}
 label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
-input,select{width:100%;font:16px inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+input,select,textarea{width:100%;font-size:16px;font-family:inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 input[type=date],select{display:block;height:46px;min-width:0;max-width:100%;margin:0}
 input[type=date]{-webkit-appearance:none;appearance:none;text-align:left;line-height:20px}
 input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:20px;margin:0}
@@ -110,6 +110,7 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 .swdel svg{width:24px;height:24px}
 .sw:not(.act) .swdel{visibility:hidden}
 .fab{z-index:8}
+html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
 </style>
 </head>
 <body>
@@ -531,7 +532,7 @@ function render(){
 }
 
 function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
-function closeS(){const sh=$('#sheet');sh.hidden=true;sh.style.top=sh.style.height=sh.style.bottom='';$('#box').style.maxHeight=''}
+function closeS(){$('#sheet').hidden=true}
 const kbUp=()=>{const v=window.visualViewport;return v?(window.innerHeight-v.height)>100:true};
 const typing=()=>{const a=document.activeElement;return !!(a&&!a.classList.contains('hs')&&$('#box').contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&kbUp())};
 // klaviatura açıqdırsa kənara toxunuş yalnız klaviaturanı bağlayır, pəncərəni yox
@@ -879,22 +880,8 @@ function swDel(id){
 try{localStorage.removeItem('xerc-lock')}catch(e){}
 
 
-// ---- Klaviatura açıq olanda pəncərə görünən sahəyə (klaviaturanın üstünə) bərkidilir:
-// başqa xanaya toxunanda iPhone səhifəni sürüşdürüb pəncərəni "yaxınlaşdırmır"
-(function(){
-  const vv=window.visualViewport;if(!vv)return;
-  const sh=$('#sheet'),bx=$('#box');
-  function fit(){
-    if(sh.hidden)return;
-    if(window.innerHeight-vv.height>100){
-      sh.style.top=vv.offsetTop+'px';sh.style.height=vv.height+'px';sh.style.bottom='auto';
-      bx.style.maxHeight=Math.max(200,vv.height-12)+'px';
-    }else{sh.style.top=sh.style.height=sh.style.bottom='';bx.style.maxHeight=''}
-  }
-  vv.addEventListener('resize',fit);vv.addEventListener('scroll',fit);
-  sh.addEventListener('focusin',()=>{[0,50,150,300,500].forEach(d=>setTimeout(fit,d))});
-})();
-
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{if(e.touches.length>1&&e.cancelable)e.preventDefault()},{passive:false});
 let popAt=0;
 document.addEventListener('touchstart',()=>{},{passive:true});
 try{new MutationObserver(()=>{if(!hsQ){hsQ=1;requestAnimationFrame(decorate)}}).observe(document.body,{childList:true,subtree:true})}catch(e){}
