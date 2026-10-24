@@ -101,9 +101,22 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 [data-hs]:not(.fab){position:relative}
 .swrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-weight:600}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+.sw{position:relative;overflow:hidden;border-top:1px solid var(--line);transition:max-height .22s ease,opacity .22s ease;max-height:140px}
+.sw:first-child,.dayh+.sw{border-top:0}
+.sw .tx{border-top:0;background:var(--card);position:relative;z-index:1;touch-action:pan-y;transition:transform .22s ease;will-change:transform}
+.sw .tx.drag{transition:none}
+.sw.gone{max-height:0;opacity:0;border-top-width:0}
+.swdel{position:absolute;right:0;top:0;bottom:0;width:84px;border:0;background:#FF3B30;color:#fff;display:flex;align-items:center;justify-content:center;padding:0;border-radius:0}
+.swdel svg{width:24px;height:24px}
+.lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+.lock svg{width:72px;height:72px;color:var(--ink)}
+.lock h3{margin:0;font-size:20px}.lock p{margin:0;color:var(--mute);font-size:14px;max-width:280px}
+.lock .btn{width:auto;min-width:200px;padding:14px 28px;margin-top:6px}
 </style>
 </head>
 <body>
+<div class="lock" id="lock" hidden><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17V11a5 5 0 0 1 5-5h6M31 6h6a5 5 0 0 1 5 5v6M42 31v6a5 5 0 0 1-5 5h-6M17 42h-6a5 5 0 0 1-5-5v-6"/><path d="M17 19v3M31 19v3M24 19v7a2 2 0 0 1-2 2M17 33c4 3.5 10 3.5 14 0"/></svg><h3>Xərc İzləyici</h3><p id="lockmsg">Davam etmək üçün Face ID ilə təsdiq et</p><button class="btn" onclick="unlockApp()">Face ID ilə aç</button></div>
+<script>try{if(localStorage.getItem('xerc-lock'))document.getElementById('lock').hidden=false}catch(e){}</script>
 <div id="app"></div>
 <button class="fab" onclick="openOp('spend')">+ Əməliyyat</button>
 <div class="toast" id="toast" hidden></div>
@@ -199,7 +212,7 @@ function quick(k){const n=new Date(),t=ymd(n);
   else if(k==='week'){const x=new Date(n);x.setDate(n.getDate()-((n.getDay()+6)%7));F.from=ymd(x);F.to=t}
   else{F.from=ymd(new Date(n.getFullYear(),n.getMonth(),1));F.to=t}
   txLim=300;render()}
-const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="tx" onclick="openTxEdit('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${k==='add'?'+':''}${fmt(t.amt)}</span></div></div>`};
+const txRow=t=>{const k=txKind(t),c=catOf(t);return `<div class="sw"><button class="swdel" aria-label="Sil" onclick="swDel('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button><div class="tx" data-id="${t.id}" onclick="swTap('${t.id}')"><div><div>${esc(t.label)}</div><div class="m">${new Date(t.d).toLocaleString('az',t.auto?{day:'numeric',month:'short'}:{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${c?' · '+esc(c):''}${t.auto?' · avtomatik':''}</div></div><div style="display:flex;align-items:center"><span class="num ${k==='add'?'pos':k==='spend'?'neg':''}">${k==='add'?'+':''}${fmt(t.amt)}</span></div></div></div>`};
 function dayGroups(l,lim=300){
   if(!l.length)return '<div class="card"><div class="empty">Bu filtrə uyğun əməliyyat yoxdur.</div></div>';
   const g=[];[...l].sort((a,b)=>b.d-a.d).slice(0,lim).forEach(t=>{const k=ymd(new Date(t.d));let x=g[g.length-1];if(!x||x.k!==k){x={k,l:[]};g.push(x)}x.l.push(t)});
@@ -415,6 +428,7 @@ function renderSet(){
 </div>
   <h2>Ana səhifə</h2><div class="card"><div class="swrow"><span>Tez əlavə düymələri</span><input type="checkbox" switch ${S.opts.tpl?'checked':''} onchange="setOpt('tpl',this.checked)"></div><div class="note" style="margin:6px 2px 0">Açıq olanda Ana səhifədə tez-tez olunan xərclər üçün düymələr görünür. Söndürsən şablonlar silinmir, sadəcə gizlənir.</div></div>
   <h2>Kateqoriyalar <button onclick="openCat()">+ Yeni</button></h2><div class="card">`+S.cats.map((c,i)=>`<div class="acc" onclick="openCat(${i})"><div><div class="n">${esc(c)}</div><div class="t">${S.tx.filter(t=>catOf(t)===c).length} xərc</div></div><div class="t">›</div></div>`).join('')+`</div>
+  <h2>Təhlükəsizlik</h2><div class="card"><div class="swrow"><span>Face ID kilidi</span><input type="checkbox" switch ${lockOn()?'checked':''} onchange="toggleLock(this)"></div><div class="note" style="margin:6px 2px 0">Açıq olanda proqram açılanda və arxa fondan qayıdanda Face ID (və ya telefonun kodu) tələb olunur.</div></div>
   <h2>Data</h2><div class="card"><div class="acc" onclick="exportD()"><div class="n">Nüsxə al</div></div><div class="acc" onclick="importD()"><div class="n">Nüsxəni yüklə</div></div><div class="acc" onclick="resetAll()"><div class="n neg">Bütün datanı sil</div></div></div>`;
 }
 function openCat(i){
@@ -825,6 +839,93 @@ function importD(){
   b.addEventListener('touchmove',e=>{if(!ok)return;const t=e.touches[0];dy=t.clientY-sy;if(dy>12&&dy>Math.abs(t.clientX-sx))b.style.transform='translateY('+dy+'px)';else b.style.transform=''},{passive:true});
   b.addEventListener('touchend',()=>{if(!ok)return;ok=false;const c=dy>110;b.style.transition='transform .18s';b.style.transform='';if(c){if(typing())document.activeElement.blur();else{closeS();hap('tick')}}setTimeout(()=>{b.style.transition=''},200)},{passive:true});
 })();
+
+
+// ---- Sola çəkib silmək (iPhone Mail kimi)
+let swMoved=0;
+function swClose(except){document.querySelectorAll('.sw .tx').forEach(r=>{if(r!==except&&r.style.transform){r.classList.remove('drag');r.style.transform=''}})}
+function swTap(id){
+  if(Date.now()-swMoved<350)return;
+  if([...document.querySelectorAll('.sw .tx')].some(r=>r.style.transform)){swClose();return}
+  openTxEdit(id);
+}
+function swDel(id){
+  const r=document.querySelector('.sw .tx[data-id="'+id+'"]'),w=r&&r.parentNode;
+  hap('tick');
+  if(w){w.style.maxHeight=w.offsetHeight+'px';void w.offsetWidth;w.classList.add('gone');setTimeout(()=>rmTx(id),230)}else rmTx(id);
+}
+(function(){
+  const W=84;let row=null,x0=0,y0=0,base=0,dx=0,drag=false,dec=false;
+  document.addEventListener('touchstart',e=>{
+    const r=e.target.closest&&e.target.closest('.sw .tx');
+    if(!r||e.touches.length!==1||e.touches[0].clientX<=28){row=null;if(!r)swClose();return}
+    swClose(r);row=r;const t=e.touches[0];x0=t.clientX;y0=t.clientY;base=r.style.transform?-W:0;dx=0;drag=false;dec=false;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!row)return;const t=e.touches[0],mx=t.clientX-x0,my=t.clientY-y0;
+    if(!dec){if(Math.abs(mx)<8&&Math.abs(my)<8)return;dec=true;drag=Math.abs(mx)>Math.abs(my);if(drag)row.classList.add('drag')}
+    if(!drag)return;
+    let v=base+mx;if(v>0)v=0;if(v<-W)v=-W-Math.sqrt(-W-v)*3;
+    dx=v;row.style.transform='translateX('+v+'px)';
+  },{passive:true});
+  document.addEventListener('touchend',()=>{
+    if(!row)return;const r=row;row=null;
+    if(!drag)return;swMoved=Date.now();r.classList.remove('drag');
+    if(dx<-W/2){r.style.transform='translateX(-'+W+'px)';hap('tick')}else r.style.transform='';
+  },{passive:true});
+  document.addEventListener('touchcancel',()=>{if(row){row.classList.remove('drag');row.style.transform='';row=null}},{passive:true});
+})();
+
+// ---- Face ID (WebAuthn, yalnız bu cihazda)
+const LK='xerc-lock';
+const lockOn=()=>{try{return !!localStorage.getItem(LK)}catch(e){return false}};
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+let authing=false,awayAt=0;
+async function toggleLock(el){
+  if(!el.checked){
+    if(!(await verifyBio()).ok){el.checked=true;return}
+    try{localStorage.removeItem(LK)}catch(e){}
+    return;
+  }
+  try{
+    if(!window.PublicKeyCredential||!navigator.credentials)throw new Error('nosupport');
+    authing=true;
+    const c=await navigator.credentials.create({publicKey:{
+      challenge:rnd(32),rp:{name:'Xərc İzləyici'},
+      user:{id:rnd(16),name:'xerc',displayName:'Xərc İzləyici'},
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},
+      timeout:60000}});
+    localStorage.setItem(LK,b64(c.rawId));hap('ok');
+  }catch(e){
+    el.checked=false;
+    if(e&&e.message==='nosupport')alert('Bu cihaz/brauzer Face ID kilidini dəstəkləmir. Tətbiq https ilə açılmalıdır.');
+    else if(!e||e.name!=='NotAllowedError')alert('Face ID qurulmadı: '+((e&&e.message)||e));
+  }finally{authing=false;awayAt=Date.now()}
+}
+async function verifyBio(){
+  const id=(()=>{try{return localStorage.getItem(LK)}catch(e){return null}})();
+  if(!id)return {ok:true};
+  authing=true;
+  try{
+    await navigator.credentials.get({publicKey:{challenge:rnd(32),allowCredentials:[{type:'public-key',id:unb64(id),transports:['internal']}],userVerification:'required',timeout:60000}});
+    return {ok:true};
+  }catch(e){return {ok:false,err:e}}
+  finally{authing=false;awayAt=Date.now()}
+}
+async function unlockApp(){
+  const m=$('#lockmsg'),r=await verifyBio();
+  if(r.ok){$('#lock').hidden=true;m.textContent='Davam etmək üçün Face ID ilə təsdiq et';hap('ok')}
+  else m.textContent='Təsdiq alınmadı. Yenidən cəhd et.';
+}
+function lockNow(){if(lockOn()){$('#lock').hidden=false}}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){if(!authing)awayAt=Date.now();return}
+  if(lockOn()&&!authing&&awayAt&&Date.now()-awayAt>10000){lockNow();unlockApp()}
+});
+if(lockOn()){$('#lock').hidden=false;setTimeout(unlockApp,350)}
 
 let popAt=0;
 try{history.replaceState({b:0},'');history.pushState({b:1},'')}catch(e){}
