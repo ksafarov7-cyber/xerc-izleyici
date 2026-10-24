@@ -39,7 +39,7 @@ h2 button{background:none;border:0;color:var(--ink);font:600 14px inherit;paddin
 h2 span{display:flex;gap:16px}
 .seg{display:flex;gap:6px;margin-bottom:14px}.seg button{flex:1;padding:10px 4px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:600;font-size:13px}.seg .on{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.chips button{padding:8px 12px;border-radius:20px;border:1px solid var(--line);background:none;color:var(--ink);font-size:13px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wd{display:flex;flex-wrap:wrap;gap:0 14px}[hidden]{display:none!important}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.two>div{min-width:0}.wd{display:flex;flex-wrap:wrap;gap:0 14px}[hidden]{display:none!important}
 .sum{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--mute)}.sum b{font-size:20px}
 .ops{display:flex;gap:8px;margin-top:8px}.ops button{flex:1;padding:10px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--ink);font-size:18px}
 .dayh{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;color:var(--mute);font-weight:600;padding-bottom:6px}.dayh b{font-weight:700;font-size:14px}.dayh+.tx{border-top:0}
@@ -57,6 +57,10 @@ h2 span{display:flex;gap:16px}
 .box h3{margin:0 0 12px}
 label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
 input,select{width:100%;font:16px inherit;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+input[type=date],select{display:block;height:46px;min-width:0;max-width:100%;margin:0}
+input[type=date]{-webkit-appearance:none;appearance:none;text-align:left;line-height:20px}
+input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:20px;margin:0}
+input[type=date]::-webkit-calendar-picker-indicator{display:none}
 .chk{display:flex;gap:10px;align-items:center;margin-top:12px;color:var(--ink);font-size:15px}.chk input{width:20px;height:20px}
 .tabs{display:flex;gap:6px;margin-bottom:6px}
 .tabs button{flex:1;padding:10px 4px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--ink);font:600 14px inherit}
@@ -179,7 +183,14 @@ const catOf=t=>t.cat||(txKind(t)==='spend'?'Digər':'');
 const seg=()=>`<div class="seg">${[['home','Ana səhifə'],['tx','Əməliyyatlar'],['stat','Statistika'],['set','⚙︎']].map(v=>`<button class="${view===v[0]?'on':''}" ${v[0]==='set'?'style="flex:0 0 46px" aria-label="Tənzimləmələr"':''} onclick="setView('${v[0]}')">${v[1]}</button>`).join('')}</div>`;
 const VW=['home','tx','stat','set'];
 function anim(d){if(!d)return;const a=$('#app');a.classList.remove('sl','sr');void a.offsetWidth;a.classList.add(d>0?'sl':'sr');hap('tick')}
-function setView(v){const d=VW.indexOf(v)-VW.indexOf(view);view=v;render();scrollTo(0,0);anim(d)}
+const NAV=[];
+const snap=()=>({view,F:{...F},ST:{...ST}});
+function doBack(){
+  if(!$('#sheet').hidden){if(typing())document.activeElement.blur();closeS();hap('tick');return true}
+  if(!NAV.length)return false;
+  const s=NAV.pop();view=s.view;F=s.F;ST=s.ST;txLim=300;render();scrollTo(0,0);anim(-1);return true;
+}
+function setView(v){if(v===view)return;NAV.push(snap());if(NAV.length>40)NAV.shift();const d=VW.indexOf(v)-VW.indexOf(view);view=v;render();scrollTo(0,0);anim(d)}
 function setF(k,v){F[k]=v;txLim=300;render()}
 function moreTx(){txLim+=300;$('#txres').innerHTML=txList()}
 function clearF(){F={type:'all',cat:'all',from:'',to:'',q:''};txLim=300;render()}
@@ -384,8 +395,8 @@ function renderStat(){
   else h+=catHtml(rows,tot,prev,col)+cmpHtml(r,pr,cur,prev)+fcHtml(tot)+obsHtml(r,rows,tot);
   $('#app').innerHTML=h;
 }
-function goDay(k){F={type:'spend',cat:'all',from:k,to:k,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
-function goCat(i){const r=prange();F={type:'spend',cat:lastRows[i][0],from:r.from,to:r.to,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
+function goDay(k){NAV.push(snap());F={type:'spend',cat:'all',from:k,to:k,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
+function goCat(i){const r=prange();NAV.push(snap());F={type:'spend',cat:lastRows[i][0],from:r.from,to:r.to,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
 
 const TH='xerc-theme';
 const getTheme=()=>{try{return localStorage.getItem(TH)||'auto'}catch(e){return 'auto'}};
@@ -428,7 +439,7 @@ function delCat(i){
 }
 function resetAll(){
   if(!confirm('BÜTÜN data silinsin? Bunu geri qaytarmaq olmaz.')||!confirm('Əminsən? Əvvəlcə nüsxə almaq məsləhətdir.'))return;
-  S=norm({acc:[],tx:[],rules:[],v:2});save();view='home';render();
+  S=norm({acc:[],tx:[],rules:[],v:2});save();NAV.length=0;view='home';render();
 }
 function sched(r){return r.freq==='daily'?'hər gün':r.freq==='weekly'?'həftədə: '+WD.filter(w=>r.days.includes(w[1])).map(w=>w[0]).join(', '):'hər ayın '+r.dom+'-i'}
 const rulesHtml=()=>`<h2>Avtomatik xərclər <button onclick="openRule()">+ Yeni</button></h2><div class="card">`+(S.rules.map(r=>`<div class="acc" onclick="openRuleEdit('${r.id}')"><div><div class="n">${esc(r.name)}</div><div class="t">${sched(r)} · ${esc(r.cat)}</div></div><div class="b num neg">${fmt(r.amt)}</div></div>`).join('')||`<div class="empty">Məsələn: hər gün Transport 2.40 ₼.</div>`)+`</div>`;
@@ -790,18 +801,23 @@ function importD(){
 // 1) səhifələr arası: sola → növbəti, sağa → əvvəlki (Ana səhifə · Əməliyyatlar · Statistika · ⚙︎)
 // 2) Statistikada diaqram sahəsində: sağa → əvvəlki dövr, sola → növbəti dövr
 (function(){
-  let x0=0,y0=0,t0=0,tg=null,on=false;
+  // Tablar arası swipe ləğv edildi. İndi: ekranın sol kənarından sağa çəkmək = geri (iPhone kimi).
+  let x0=0,y0=0,t0=0,tg=null,mode=0,pop0=0;
   addEventListener('touchstart',e=>{
-    const t=e.touches[0];on=e.touches.length===1&&$('#sheet').hidden&&t.clientX>16&&!e.target.closest('input:not(.hs),select,textarea');
-    x0=t.clientX;y0=t.clientY;t0=Date.now();tg=e.target;
+    const t=e.touches[0];mode=0;x0=t.clientX;y0=t.clientY;t0=Date.now();tg=e.target;pop0=popAt;
+    if(e.touches.length!==1)return;
+    if(t.clientX<=28)mode=2;
+    else if($('#sheet').hidden&&!e.target.closest('input:not(.hs),select,textarea'))mode=1;
   },{passive:true});
   addEventListener('touchend',e=>{
-    if(!on)return;on=false;
+    if(!mode)return;const m=mode;mode=0;
     const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;
+    if(m===2){
+      if(dx>70&&Math.abs(dy)<dx*.7&&Date.now()-t0<900)setTimeout(()=>{if(popAt===pop0)doBack()},250);
+      return;
+    }
     if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6||Date.now()-t0>700)return;
-    if(view==='stat'&&tg.closest&&tg.closest('[data-sw="p"]')){stepP(dx<0?1:-1);return}
-    const i=VW.indexOf(view)+(dx<0?1:-1);
-    if(i>=0&&i<VW.length)setView(VW[i]);
+    if(view==='stat'&&tg.closest&&tg.closest('[data-sw="p"]'))stepP(dx<0?1:-1);
   },{passive:true});
   // alt pəncərəni (sheet) aşağı çəkib bağlamaq
   const b=$('#box');let sy=0,sx=0,dy=0,ok=false;
@@ -810,6 +826,9 @@ function importD(){
   b.addEventListener('touchend',()=>{if(!ok)return;ok=false;const c=dy>110;b.style.transition='transform .18s';b.style.transform='';if(c){if(typing())document.activeElement.blur();else{closeS();hap('tick')}}setTimeout(()=>{b.style.transition=''},200)},{passive:true});
 })();
 
+let popAt=0;
+try{history.replaceState({b:0},'');history.pushState({b:1},'')}catch(e){}
+addEventListener('popstate',()=>{popAt++;doBack();try{history.pushState({b:1},'')}catch(e){}});
 document.addEventListener('touchstart',()=>{},{passive:true});
 try{new MutationObserver(()=>{if(!hsQ){hsQ=1;requestAnimationFrame(decorate)}}).observe(document.body,{childList:true,subtree:true})}catch(e){}
 applyTheme();decorate();
