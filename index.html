@@ -21,7 +21,7 @@
 html{background:var(--bg)}
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(60% 38% at 12% 2%,var(--b1),transparent 70%),radial-gradient(55% 36% at 100% 22%,var(--b2),transparent 70%),radial-gradient(70% 45% at 65% 100%,var(--b3),transparent 70%)}
 html,body{margin:0;color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
-body{padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 112px);max-width:560px;margin:0 auto}
+body{padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 120px);max-width:560px;margin:0 auto}
 .num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .hero{padding:8px 4px 20px}
 .hero small{color:var(--mute);font-size:14px}
@@ -118,13 +118,13 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
 .sw button.swdel:active{transform:translateX(calc(84px + var(--tx,0px)));opacity:.85}
 .dock{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);max-width:560px;margin:0 auto;padding:0 14px;display:flex;gap:10px;align-items:center;z-index:8;pointer-events:none}
 .dock>*{pointer-events:auto}
-.tb{flex:1;min-width:0;height:62px;display:flex;align-items:center;gap:2px;padding:5px;border-radius:31px;background:var(--gl);border:1px solid var(--glb);box-shadow:var(--shd),inset 0 1px 0 rgba(255,255,255,.4);-webkit-backdrop-filter:blur(26px) saturate(190%);backdrop-filter:blur(26px) saturate(190%)}
-.tb button{flex:1;min-width:0;height:100%;border:0;border-radius:26px;background:none;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:600;font-family:inherit;padding:0 2px}
+.tb{flex:1;min-width:0;height:68px;display:flex;align-items:center;gap:0;padding:4px;border-radius:34px;background:var(--gl);border:1px solid var(--glb);box-shadow:var(--shd),inset 0 1px 0 rgba(255,255,255,.4);-webkit-backdrop-filter:blur(26px) saturate(190%);backdrop-filter:blur(26px) saturate(190%)}
+.tb button{flex:1;min-width:0;height:100%;border:0;border-radius:30px;background:none;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;font-family:inherit;padding:0 1px}
 .tb button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tb button svg{width:23px;height:23px;flex:none}
+.tb button svg{width:26px;height:26px;flex:none}
 .tb button.on{background:var(--tbon);color:var(--tint);box-shadow:0 1px 6px rgba(0,0,0,.08)}
-.dock .fab{position:relative;left:auto;bottom:auto;transform:none;width:62px;height:62px;flex:none;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--fabbg);color:var(--onacc);border:1px solid var(--glb);box-shadow:var(--shd);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
-.dock .fab svg{width:26px;height:26px}
+.dock .fab{position:relative;left:auto;bottom:auto;transform:none;width:68px;height:68px;flex:none;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--fabbg);color:var(--onacc);border:1px solid var(--glb);box-shadow:var(--shd);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
+.dock .fab svg{width:28px;height:28px}
 .dock .fab:active{transform:scale(.92);opacity:.9}
 </style>
 </head>
@@ -520,8 +520,8 @@ function runRules(){
 function toggleSort(){sortMode=!sortMode;render()}
 function mv(id,d){const i=S.acc.findIndex(a=>a.id===id),j=i+d;if(j<0||j>=S.acc.length)return;[S.acc[i],S.acc[j]]=[S.acc[j],S.acc[i]];save();render()}
 const TI=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-const TABS=[['home','Ana səhifə',TI('<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>')],['tx','Əməliyyatlar',TI('<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>')],['stat','Statistika',TI('<path d="M5 20v-8M12 20V5M19 20v-12"/>')],['set','Ayarlar',TI('<path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/>')]];
-function updTabs(){const t=$('#tb');if(t)t.innerHTML=TABS.map(x=>`<button class="${view===x[0]?'on':''}" onclick="setView('${x[0]}')" aria-label="${x[1]}">${x[2]}<span>${x[1]}</span></button>`).join('')}
+const TABS=[['home','Ana səhifə',TI('<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>')],['tx','Əməliyyat',TI('<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>')],['stat','Statistika',TI('<path d="M5 20v-8M12 20V5M19 20v-12"/>')],['set','Ayarlar',TI('<path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/>')]];
+function updTabs(){const t=$('#tb');if(t)t.innerHTML=TABS.map(x=>`<button class="${view===x[0]?'on':''}" onclick="setView('${x[0]}')" aria-label="${x[0]==='tx'?'Əməliyyatlar':x[1]}">${x[2]}<span>${x[1]}</span></button>`).join('')}
 function render(){renderMain();updTabs()}
 function renderMain(){
   if(view==='tx')return renderTx();
