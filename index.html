@@ -97,6 +97,54 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 [data-hs]:not(.fab){position:relative}
 .swrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-weight:600}
 :focus-visible{outline:2px solid var(--pos);outline-offset:2px}
+.dots{display:flex;justify-content:center;gap:2px;margin:-6px 0 6px}
+.dots button{width:22px;height:22px;border:0;background:none;padding:0;position:relative}
+.dots button::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;border:1.5px solid var(--mute);box-sizing:border-box;transition:background-color .15s}
+.dots button.on::after{background:var(--ink);border-color:var(--ink)}
+.medal{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--line);flex:none;line-height:1}
+.medal.off{filter:grayscale(1);opacity:.4}
+.cel{position:fixed;inset:0;z-index:60;background:radial-gradient(circle at 50% 38%,#1c2a38,#070b10 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 24px) 24px calc(env(safe-area-inset-bottom,0px) + 24px);color:#fff;text-align:center;overflow:hidden;animation:celIn .3s ease-out}
+@keyframes celIn{from{opacity:0}}
+.cel-top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 18px);font-size:13px;opacity:.7;font-variant-numeric:tabular-nums}
+.cel-stage{position:relative;width:260px;height:260px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.rays{position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 0deg,var(--c) 0 6deg,transparent 6deg 18deg);-webkit-mask:radial-gradient(circle,#000 18%,transparent 68%);mask:radial-gradient(circle,#000 18%,transparent 68%);opacity:0;animation:rayIn .8s ease-out .35s forwards,spin 14s linear infinite}
+@keyframes rayIn{to{opacity:.55}}@keyframes spin{to{transform:rotate(360deg)}}
+.ring{position:absolute;width:140px;height:140px;border-radius:50%;border:3px solid var(--c);opacity:0;animation:ring 1.1s ease-out .55s}
+.ring.r2{animation-delay:.8s}
+@keyframes ring{0%{transform:scale(.8);opacity:.9}100%{transform:scale(2.3);opacity:0}}
+.cm{position:relative;animation:cmIn 1s cubic-bezier(.2,1.3,.4,1) both;filter:drop-shadow(0 8px 24px rgba(0,0,0,.5))}
+@keyframes cmIn{0%{transform:translateY(-140px) scale(.2) rotate(-240deg);opacity:0}60%{transform:translateY(8px) scale(1.18) rotate(10deg);opacity:1}100%{transform:none;opacity:1}}
+.shine{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none}
+.shine::after{content:"";position:absolute;top:-20%;left:-60%;width:40%;height:140%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);transform:rotate(12deg);animation:shine 1s ease-in-out 1s both}
+@keyframes shine{to{left:130%}}
+.sp{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3px;border-radius:50%;background:var(--c);opacity:0;animation:sp .9s ease-out .6s}
+.sp:nth-child(even){background:#fff;width:5px;height:5px}
+@keyframes sp{0%{transform:rotate(var(--a)) translateX(50px);opacity:1}100%{transform:rotate(var(--a)) translateX(130px) scale(.3);opacity:0}}
+.cel-txt{animation:up2 .6s ease-out .55s both}
+@keyframes up2{from{transform:translateY(18px);opacity:0}}
+.cel-k{font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.65;margin-bottom:6px}
+.cel h2{margin:0 0 8px;font-size:28px;line-height:1.15}
+.pill{display:inline-block;padding:4px 14px;border-radius:20px;font-weight:700;font-size:14px;color:#fff;margin-bottom:10px}
+.cel p{margin:0 auto;max-width:300px;opacity:.75;font-size:15px;line-height:1.4}
+.pips{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.pips span{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.18)}
+.pips span.on{animation:pipIn .4s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pipIn{from{transform:scale(0)}}
+.cel-btns{width:100%;max-width:360px;margin-top:22px;animation:up2 .5s ease-out 1.1s both}
+.cel-big{font-size:84px;animation:cmIn 1s cubic-bezier(.2,1.3,.4,1) both;margin-bottom:12px}
+.cel-in{animation:up2 .5s ease-out both}
+.cel .cf{top:-16px;animation:cfF 2.8s ease-in forwards}
+@keyframes cfF{0%{transform:translateY(0) rotate(0);opacity:1}85%{opacity:1}100%{transform:translateY(115vh) rotate(720deg);opacity:0}}
+@media(prefers-reduced-motion:reduce){.cel *{animation:none!important}.cel .cf{display:none}.rays{opacity:.55}}
+.bgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bc{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;text-align:center;min-width:0}
+.bc b{font-size:12px;line-height:1.2}.bc small{font-size:11px;color:var(--mute)}
+.rw{display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.rw:first-child{border-top:0}
+@keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.pop{animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes cf{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(260px) rotate(540deg);opacity:0}}
+.cf{position:absolute;top:-12px;width:7px;height:11px;border-radius:2px;opacity:0;animation:cf 1.7s ease-out forwards;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.pop{animation:none}.cf{display:none}}
 </style>
 </head>
 <body>
@@ -105,6 +153,7 @@ button.btn:not(:disabled):active{transform:scale(.98);opacity:.85}
 <div class="toast" id="toast" hidden></div>
 <div class="warn" id="warn" hidden><span>Data yadda saxlanmadı! Nüsxə al, yoxsa itə bilər.</span><button onclick="exportD()">Nüsxə al</button></div>
 <div class="sheet" id="sheet" hidden onclick="if(event.target===this)sheetTap()"><div class="box" id="box"></div></div>
+<div class="cel" id="cel" hidden></div>
 
 <script>
 const K='xerc-izleyici-v1';
@@ -138,9 +187,9 @@ document.addEventListener('click',e=>{
   const h=t.parentElement;
   setTimeout(()=>{if(h&&!h.disabled)h.click()},0);
 },true);
-let saveBad=false;
+let saveBad=false,chkQ=0;
 const warn=on=>{const e=document.getElementById('warn');if(e)e.hidden=!on};
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S));if(saveBad){saveBad=false;warn(0)}return true}catch(e){saveBad=true;warn(1);return false}};
+const save=()=>{if(!chkQ){chkQ=1;setTimeout(chk,0)}try{localStorage.setItem(K,JSON.stringify(S));if(saveBad){saveBad=false;warn(0)}return true}catch(e){saveBad=true;warn(1);return false}};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const r2=n=>Math.round(n*100)/100;
 // mənfi işarəsi göstərilmir: qırmızı rəng = xərc/borc
@@ -176,10 +225,12 @@ const WD=[['B.e',1],['Ç.a',2],['Çər',3],['C.a',4],['Cüm',5],['Şən',6],['Ba
 const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const txKind=t=>t.kind||(t.sign==='+'?'add':t.sign==='−'?'spend':'move');
 const catOf=t=>t.cat||(txKind(t)==='spend'?'Digər':'');
-const seg=()=>`<div class="seg">${[['home','Ana səhifə'],['tx','Əməliyyatlar'],['stat','Statistika'],['set','⚙︎']].map(v=>`<button class="${view===v[0]?'on':''}" ${v[0]==='set'?'style="flex:0 0 46px" aria-label="Tənzimləmələr"':''} onclick="setView('${v[0]}')">${v[1]}</button>`).join('')}</div>`;
-const VW=['home','tx','stat','set'];
+const seg=()=>`<div class="seg">${[['home','Ana səhifə'],['tx','Əməliyyatlar'],['stat','Statistika'],['set','⚙︎']].map(v=>`<button class="${(view==='rew'?'home':view)===v[0]?'on':''}" ${v[0]==='set'?'style="flex:0 0 46px" aria-label="Tənzimləmələr"':''} onclick="setView('${v[0]}')">${v[1]}</button>`).join('')}</div>`;
+const VW=['home','rew','tx','stat','set'];
 function anim(d){if(!d)return;const a=$('#app');a.classList.remove('sl','sr');void a.offsetWidth;a.classList.add(d>0?'sl':'sr');hap('tick')}
-function setView(v){const d=VW.indexOf(v)-VW.indexOf(view);view=v;render();scrollTo(0,0);anim(d)}
+function setView(v){const d=VW.indexOf(v)-VW.indexOf(view);
+  if(v==='stat'&&view!=='stat'){const k=ymd(new Date());S.sv=S.sv||[];if(!S.sv.includes(k)){S.sv.push(k);save()}}
+  view=v;render();scrollTo(0,0);anim(d)}
 function setF(k,v){F[k]=v;txLim=300;render()}
 function moreTx(){txLim+=300;$('#txres').innerHTML=txList()}
 function clearF(){F={type:'all',cat:'all',from:'',to:'',q:''};txLim=300;render()}
@@ -387,6 +438,102 @@ function renderStat(){
 function goDay(k){F={type:'spend',cat:'all',from:k,to:k,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
 function goCat(i){const r=prange();F={type:'spend',cat:lastRows[i][0],from:r.from,to:r.to,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
 
+// ---- Mükafatlar (badge): səviyyələr S.tx datasından hesablanır, yalnız qazanılan səviyyə S.badges-də saxlanır (geri alınmır)
+const LC=['#B87333','#9AA5B1','#E0A800','#38BDF8'],TN=['Bürünc','Gümüş','Qızıl','Brilyant'];
+const lvOf=(b,v)=>b.t.filter(x=>v>=x).length;
+const lvName=(b,l)=>b.t.length===1?'Qazanıldı':TN[l-1];
+const BD=[
+  {id:'first',g:'Başlanğıc',n:'İlk addım',i:'🌱',d:'İlk əməliyyatını yaz.',t:[1],v:c=>c.n},
+  {id:'bud',g:'Başlanğıc',n:'Büdcə qurucusu',i:'🎯',d:'Xərc büdcəsi hesabı yarat.',t:[1],v:c=>c.bud},
+  {id:'auto',g:'Başlanğıc',n:'Avtomatik köməkçi',i:'🔁',d:'Təkrarlanan xərc üçün avtomatik qayda yarat.',t:[1],v:c=>c.rules},
+  {id:'streak',g:'Ardıcıllıq',n:'Gündəlik vərdiş',i:'🔥',d:'Ardıcıl günlərdə əməliyyat yaz. Səviyyə ən uzun ardıcıllığına görə verilir.',t:[3,7,30,100],u:'gün',v:c=>c.best,p:c=>c.cur,x:c=>'rekordun '+c.best+' gün'},
+  {id:'zero',g:'Ardıcıllıq',n:'Sıfır xərc günü',i:'🌙',d:'Heç nə xərcləmədiyin günlər (tətbiqi işlətdiyin dövrdə).',t:[1,7,30],u:'gün',v:c=>c.zero},
+  {id:'txs',g:'Vərdiş',n:'Qeyd ustası',i:'📒',d:'Yazdığın əməliyyatların sayı.',t:[50,100,500],u:'əməliyyat',v:c=>c.n},
+  {id:'stat',g:'Vərdiş',n:'Analitik',i:'📊',d:'Statistikaya müxtəlif günlərdə bax.',t:[3,10,30],u:'gün',v:c=>c.sv},
+  {id:'save',g:'Qənaət',n:'Qənaətçi',i:'💰',d:'Ayın gəlirinin ən azı 20%-ni qənaət et. Bitmiş aylar sayılır.',t:[1,3,6],u:'ay',v:c=>c.save},
+  {id:'less',g:'Qənaət',n:'Azalan xərc',i:'📉',d:'Keçən aydan az xərclə. Bitmiş aylar sayılır.',t:[1,3,6],u:'ay',v:c=>c.less},
+  {id:'cat',g:'Qənaət',n:'Kateqoriya ustası',i:'🏷️',d:'Əvvəlki ay ən azı 20 ₼ olan kateqoriyanın xərcini 30% və daha çox azalt.',t:[1,3,6],u:'ay',v:c=>c.catm}
+];
+// yaradılma vaxtı id-dən oxunur: keçmiş tarixə əməliyyat yazmaqla ardıcıllıq saxtalaşdırıla bilməsin
+const tcr=t=>{const n=parseInt(String(t.id).slice(0,8),36);return n>1.5e12&&n<4e12?n:t.d};
+function badgeCtx(){
+  const today=ymd(new Date()),man=S.tx.filter(t=>!t.auto);
+  const cd=new Set(man.map(t=>ymd(new Date(tcr(t))))),days=[...cd].sort();
+  let best=0,run=0,prev='';
+  days.forEach(k=>{run=prev&&addDays(prev,1)===k?run+1:1;if(run>best)best=run;prev=k});
+  const last=days[days.length-1],cur=last&&(last===today||last===addDays(today,-1))?run:0;
+  const sd=new Set();S.tx.forEach(t=>{if(txKind(t)==='spend'&&!t.auto)sd.add(ymd(new Date(t.d)))});
+  let zero=0;
+  if(days.length){const y=addDays(today,-1);for(let k=days[0],g=0;k<=y&&g<3700;k=addDays(k,1),g++)if(!sd.has(k)&&(cd.has(k)||cd.has(addDays(k,1))))zero++}
+  const n=new Date(),cm=new Date(n.getFullYear(),n.getMonth(),1);
+  let sv=0,less=0,catm=0;
+  if(S.tx.length){
+    let m=new Date(Math.min(...S.tx.map(t=>t.d)));m=new Date(m.getFullYear(),m.getMonth(),1);
+    let pv=null,g=0;
+    while(m<cm&&g++<240){
+      const a=ymd(m),b=ymd(new Date(m.getFullYear(),m.getMonth()+1,0)),cs=spendBy(a,b),sp=r2(Object.values(cs).reduce((x,y)=>x+y,0)),inc=sumKind(a,b,'add');
+      if(inc>0&&(inc-sp)/inc>=.2)sv++;
+      if(pv){if(pv.sp>0&&sp<pv.sp)less++;if(Object.keys(pv.cs).some(c=>pv.cs[c]>=20&&(cs[c]||0)<=pv.cs[c]*.7))catm++}
+      pv={sp,cs};m=new Date(m.getFullYear(),m.getMonth()+1,1);
+    }
+  }
+  return{n:man.length,bud:S.acc.filter(isB).length,rules:S.rules.length,best,cur,zero,save:sv,less,catm,sv:(S.sv||[]).length};
+}
+function chk(){
+  chkQ=0;
+  const c=badgeCtx(),first=!S.badges,fresh=first&&!S.tx.length,retro=first&&S.tx.length>1;S.badges=S.badges||{};const up=[];
+  BD.forEach(b=>{const l=lvOf(b,b.v(c)),o=(S.badges[b.id]||{}).l||0;if(l>o){S.badges[b.id]={l,d:retro?0:Date.now()};if(!fresh)up.push({b,l})}});
+  if(first||up.length){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+  if(up.length){if(view==='rew')render();celebrate(up,0,retro)}
+}
+function medal(b,l,sz){
+  const col=b.t.length===1?'#0B7A5C':LC[l-1],f=Math.round(sz*.48);
+  return l>0?`<span class="medal" style="width:${sz}px;height:${sz}px;font-size:${f}px;background:linear-gradient(145deg,${col},${col}bb);box-shadow:0 0 0 3px ${col}44">${b.i}</span>`:`<span class="medal off" style="width:${sz}px;height:${sz}px;font-size:${f}px">${b.i}</span>`;
+}
+// Tam ekran açılış: mükafatlar tək-tək gəlir (nüsxə yükləyəndə və ya yeni mükafat qazananda)
+let celQ=[],celI=0,celR=false;
+const celConf=()=>Array.from({length:38},()=>`<i class="cf" style="left:${(Math.random()*100).toFixed(0)}%;background:${['#E0A800','#0B7A5C','#38BDF8','#C2410C','#8B5CF6','#fff'][Math.floor(Math.random()*6)]};animation-delay:${(.5+Math.random()*1.3).toFixed(2)}s"></i>`).join('');
+function celebrate(up,tries=0,retro=false){
+  if(!$('#sheet').hidden||!$('#cel').hidden){if(tries<25)setTimeout(()=>celebrate(up,tries+1,retro),1200);return}
+  celQ=[...up].sort((a,b)=>a.l-b.l);celR=retro;celI=retro&&celQ.length>1?-1:0;celStep();
+}
+function celStep(){
+  const e=$('#cel'),n=celQ.length;e.hidden=false;
+  if(celI<0){
+    e.innerHTML=`<div class="cel-in"><div class="cel-big">🏆</div><h2>Tarixçən hesablandı</h2><p>${n} mükafat qazanmısan.<br>Onlar tək-tək açılacaq.</p><div class="cel-btns" style="animation-delay:.5s;margin:26px auto 0"><button class="btn" style="background:#fff;color:#14202B" onclick="celNext()">Aç</button></div></div>`;
+    hap('ok');return;
+  }
+  const x=celQ[celI],b=x.b,l=x.l,col=b.t.length===1?'#0B7A5C':LC[l-1],last=celI===n-1;
+  const sp=Array.from({length:14},(_,i)=>`<i class="sp" style="--a:${Math.round(i*360/14)}deg"></i>`).join('');
+  const pips=b.t.length>1?`<div class="pips">${b.t.map((t,i)=>`<span ${i<l?`class="on" style="background:${LC[i]};animation-delay:${(.95+i*.18).toFixed(2)}s"`:''}></span>`).join('')}</div>`:'';
+  e.innerHTML=`${n>1?`<div class="cel-top">${celI+1} / ${n}</div>`:''}${celConf()}<div class="cel-stage" style="--c:${col}"><div class="rays"></div><i class="ring"></i><i class="ring r2"></i>${sp}<div class="cm">${medal(b,l,132)}<i class="shine"></i></div></div><div class="cel-txt"><div class="cel-k">${celR?'Qazandığın mükafat':'Yeni mükafat!'}</div><h2>${esc(b.n)}</h2><div class="pill" style="background:${col}">${lvName(b,l)}</div><p>${esc(b.d)}</p>${pips}</div><div class="cel-btns"><button class="btn" style="background:#fff;color:#14202B" onclick="celNext()">${last?'Əla!':'Növbəti'}</button>${last?'':'<button class="btn alt" style="color:#fff;opacity:.7" onclick="celEnd()">Hamısını keç</button>'}</div>`;
+  hap('ok');
+}
+function celNext(){celI++;if(celI>=celQ.length)celEnd();else celStep()}
+function celEnd(){const e=$('#cel');e.hidden=true;e.innerHTML='';celQ=[];hap('tick');if(view==='rew')render()}
+function replayBadges(){const{R}=rewRows(),up=R.filter(r=>r.l>0).map(r=>({b:r.b,l:r.l}));if(up.length)celebrate(up,0,true)}
+const dots=()=>`<div class="dots">${[['home','Ana səhifə'],['rew','Mükafatlar']].map(v=>`<button class="${view===v[0]?'on':''}" onclick="setView('${v[0]}')" aria-label="${v[1]}"></button>`).join('')}</div>`;
+function rewRows(){
+  const c=badgeCtx();
+  return{c,R:BD.map(b=>{const v=b.v(c),l=Math.max(((S.badges||{})[b.id]||{}).l||0,lvOf(b,v));return{b,v,l,pv:b.p?b.p(c):v,nx:b.t[l]}})};
+}
+function renderRew(){
+  const{R}=rewRows(),tot=R.reduce((s,r)=>s+r.b.t.length,0),got=R.reduce((s,r)=>s+r.l,0);
+  const nxt=R.filter(r=>r.nx).sort((a,b)=>b.pv/b.nx-a.pv/a.nx).slice(0,3);
+  let h=seg()+dots()+`<div class="card"><div class="sum"><span>Qazanılan mükafatlar</span><b class="num">${got} / ${tot}</b></div><div class="bar" style="height:8px;margin-top:8px"><i style="width:${got/tot*100}%;background:var(--pos)"></i></div></div>`;
+  if(nxt.length)h+=`<h2>Növbəti hədəflər</h2><div class="card">`+nxt.map(r=>`<div class="rw" style="cursor:pointer" onclick="openBadge('${r.b.id}')">${medal(r.b,r.l+1,44)}<div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(r.b.n)}</b><span class="t num">${r.pv} / ${r.nx}${r.b.u?' '+r.b.u:''}</span></div><div class="note" style="margin:1px 0 5px">${r.b.t.length===1?esc(r.b.d):lvName(r.b,r.l+1)}</div><div class="bar"><i style="width:${Math.min(100,r.pv/r.nx*100)}%;background:var(--pos)"></i></div></div></div>`).join('')+`</div>`;
+  ['Ardıcıllıq','Vərdiş','Qənaət','Başlanğıc'].forEach(g=>{
+    h+=`<h2>${g}</h2><div class="bgrid">`+R.filter(r=>r.b.g===g).map(r=>`<button class="bc" onclick="openBadge('${r.b.id}')">${medal(r.b,r.l,56)}<b>${esc(r.b.n)}</b><small class="num">${!r.nx?lvName(r.b,r.l):r.b.t.length===1?'Hələ yox':r.pv+' / '+r.nx}</small></button>`).join('')+`</div>`;
+  });
+  if(got)h+=`<button class="btn" style="background:none;color:var(--ink);border:1px solid var(--line);margin-top:18px" onclick="replayBadges()">Qazandıqlarımı yenidən göstər</button>`;
+  $('#app').innerHTML=h;
+}
+function openBadge(id){
+  const{c,R}=rewRows(),r=R.find(x=>x.b.id===id),b=r.b,e=(S.badges||{})[id];
+  const tl=b.t.map((t,i)=>`<div class="rw"><span class="t" style="width:18px">${i<r.l?'✓':'○'}</span><b style="flex:1">${lvName(b,i+1)}</b><span class="t num">${b.t.length===1?'':t+' '+b.u}</span></div>`).join('');
+  openS(`<div style="text-align:center">${medal(b,r.l,80)}<h3 style="margin:12px 0 4px">${esc(b.n)}</h3><div class="note" style="margin:0 0 10px">${esc(b.d)}</div></div>${tl}${r.nx?`<div class="note" style="margin-top:10px">Növbəti: ${lvName(b,r.l+1)} · hazırda ${r.pv} / ${r.nx}${b.u?' '+b.u:''}${b.x?' · '+b.x(c):''}</div>`:`<div class="note" style="margin-top:10px">Bütün səviyyələr qazanılıb.</div>`}${e&&e.d?`<div class="note">Son qazanma: ${dmy(new Date(e.d))}</div>`:''}<button class="btn" onclick="closeS()">Bağla</button>`);
+}
+
 const TH='xerc-theme';
 const getTheme=()=>{try{return localStorage.getItem(TH)||'auto'}catch(e){return 'auto'}};
 function applyTheme(){
@@ -484,6 +631,7 @@ function runRules(){
 function toggleSort(){sortMode=!sortMode;render()}
 function mv(id,d){const i=S.acc.findIndex(a=>a.id===id),j=i+d;if(j<0||j>=S.acc.length)return;[S.acc[i],S.acc[j]]=[S.acc[j],S.acc[i]];save();render()}
 function render(){
+  if(view==='rew')return renderRew();
   if(view==='tx')return renderTx();
   if(view==='stat')return renderStat();
   if(view==='set')return renderSet();
@@ -492,7 +640,7 @@ function render(){
   const net=pos+neg-bud,dl=daysLeft();
   const cp=[neg<0?'borclar':'',B.length?'xərc büdcəsi':''].filter(Boolean).join(' və ');
   const dailyAccs=S.acc.filter(a=>isB(a)||a.daily);
-  let h=seg()+`<div class="hero"><small>${net<0?'Hazırda sənin borcun':'Hazırda sənin pulun'}</small>
+  let h=seg()+dots()+`<div class="hero"><small>${net<0?'Hazırda sənin borcun':'Hazırda sənin pulun'}</small>
   <div class="big num ${net<0?'neg':''}">${fmt(net)}</div>
   <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div>${cp?`<small style="display:block;margin-top:10px;font-size:12px;opacity:.7">${cp[0].toUpperCase()+cp.slice(1)} ümumi məbləğdən çıxılır.</small>`:''}</div>`;
   if(dailyAccs.length){
@@ -792,7 +940,7 @@ function importD(){
 (function(){
   let x0=0,y0=0,t0=0,tg=null,on=false;
   addEventListener('touchstart',e=>{
-    const t=e.touches[0];on=e.touches.length===1&&$('#sheet').hidden&&t.clientX>16&&!e.target.closest('input:not(.hs),select,textarea');
+    const t=e.touches[0];on=e.touches.length===1&&$('#sheet').hidden&&$('#cel').hidden&&t.clientX>16&&!e.target.closest('input:not(.hs),select,textarea');
     x0=t.clientX;y0=t.clientY;t0=Date.now();tg=e.target;
   },{passive:true});
   addEventListener('touchend',e=>{
