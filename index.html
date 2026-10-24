@@ -260,61 +260,131 @@ function dlt(c,p){
   if(pc===0)return{cls:'',txt:'eyni',arr:'＝'};
   return{cls:pc>0?'neg':'pos',txt:(pc>0?'↑ ':'↓ ')+Math.abs(pc)+'%',arr:pc>0?'↑':'↓'};
 }
-function cmpHtml(r,pr,cur,prev,col){
-  const tot=r2(Object.values(cur).reduce((x,y)=>x+y,0)),ptot=r2(Object.values(prev).reduce((x,y)=>x+y,0)),P=ST.p,now=ST.off===0;
-  const ref=(now?{day:'dünənə',week:'keçən həftəyə',month:'keçən aya'}:{day:'əvvəlki günə',week:'əvvəlki həftəyə',month:'əvvəlki aya'})[P];
-  const vs=(now?{day:'Dünənlə',week:'Keçən həftə ilə',month:'Keçən ayla'}:{day:'Əvvəlki gün ilə',week:'Əvvəlki həftə ilə',month:'Əvvəlki ayla'})[P];
-  const nm=now?{day:['Bu gün','Dünən'],week:['Bu həftə','Keçən həftə'],month:['Bu ay','Keçən ay']}[P]:[r.label,pr.label];
-  if(!ptot)return `<div class="card"><div class="empty">Müqayisə üçün əvvəlki dövrdə (${esc(nm[1])}) xərc yoxdur.</div></div>`;
-  const note=pr.cut?`<div class="note" style="margin:0 0 6px">Bu ${P==='week'?'həftə':'ay'} hələ bitməyib, ona görə ${P==='week'?'keçən həftənin':'keçən ayın'} ilk ${pr.cut} günü ilə müqayisə olunur.</div>`:'';
-  const names=[...new Set([...Object.keys(cur),...Object.keys(prev)])].map(n=>[n,cur[n]||0,prev[n]||0]).sort((a,b)=>Math.abs(b[1]-b[2])-Math.abs(a[1]-a[2]));
-  const sent=(n,c,p)=>{const d=dlt(c,p);
-    if(!p)return `${esc(n)} kateqoriyasında əvvəl xərc olmayıb, indi ${fmt(c)} xərclənib`;
-    if(!c)return `${esc(n)} kateqoriyasında bu dövrdə xərc yoxdur (əvvəl ${fmt(p)} idi)`;
-    const pc=Math.round(Math.abs(c-p)/p*100);
-    return `${esc(n)} kateqoriyasında ${ref} nisbətən ${pc}% ${c>p?'çox':'az'} xərcləmisiniz`};
-  const lines=[];
-  const td=dlt(tot,ptot),tp=Math.round(Math.abs(tot-ptot)/ptot*100);
-  lines.push(`<div class="ins"><b class="${td.cls}">${td.arr}</b><span>${tp===0?`Ümumi xərcləriniz ${ref} nisbətən demək olar ki, eynidir`:`Ümumi xərcləriniz ${ref} nisbətən <b class="${td.cls}" style="display:inline;width:auto">${tp}% ${tot>ptot?'çoxdur':'azdır'}</b>`}</span></div>`);
-  names.filter(x=>dlt(x[1],x[2]).txt!=='eyni').slice(0,3).forEach(x=>{const d=dlt(x[1],x[2]);lines.push(`<div class="ins"><b class="${d.cls}">${d.arr}</b><span>${sent(x[0],x[1],x[2])}</span></div>`)});
-  const crow=(n,c,p,color)=>{const d=dlt(c,p),mx=Math.max(c,p)||1;return `<div class="cmp"><div class="cn"><span>${esc(n)}</span><b class="num ${d?d.cls:''}">${d?d.txt:''}</b></div><div class="bar"><i style="width:${c/mx*100}%;background:${color}"></i></div><div class="bar p"><i style="width:${p/mx*100}%"></i></div><div class="cv num"><span>${fmt(c)}</span><span>${fmt(p)}</span></div></div>`};
-  return `<div class="card"><h3 style="margin:0 0 6px;font-size:15px">${vs} müqayisə</h3>${note}${lines.join('')}
-  <div class="leg"><span><i></i>${esc(nm[0])}</span><span><i class="p"></i>${esc(nm[1])}</span></div>
-  ${crow('Cəmi',tot,ptot,'var(--ink)')}${names.map(x=>crow(x[0],x[1],x[2],col(x[0]))).join('')}</div>`;
+const WDN=['Bazar','Bazar ertəsi','Çərşənbə axşamı','Çərşənbə','Cümə axşamı','Cümə','Şənbə'];
+const WDS=['Baz','B.e','Ç.a','Çər','C.a','Cüm','Şən'];
+const addDays=(s,n)=>{const d=pdate(s);return ymd(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n))};
+function spendDays(from,to){
+  const m={};
+  S.tx.forEach(t=>{if(txKind(t)!=='spend')return;const k=ymd(new Date(t.d));if(k<from||k>to)return;m[k]=r2((m[k]||0)+t.amt)});
+  return m;
 }
 function sumKind(from,to,kind){
   return r2(S.tx.reduce((a,t)=>{if(txKind(t)!==kind)return a;const k=ymd(new Date(t.d));return k<from||k>to?a:a+t.amt},0));
 }
-function sumHtml(r,inc,sp){
+// A. Başlıq kartı: dövrün əsas cavabı
+function headHtml(r,inc,sp){
   if(!inc&&!sp)return '';
   const nm=ST.off===0?{day:'Bu gün',week:'Bu həftə',month:'Bu ay'}[ST.p]:r.label,d=r2(inc-sp),ok=d>=0;
-  const msg=!inc?'gəlir yazılmayıb.':ok?`gəlirin ${Math.round(d/inc*100)}%-i qalıb.`:`xərc gəlirdən ${fmt(d)} çoxdur.`;
-  return `<div class="card"><div class="trio"><div><small>Gəlir</small><b class="num pos">${fmt(inc)}</b></div><div><small>Xərc</small><b class="num neg">${fmt(sp)}</b></div><div><small>${ok?'Qənaət':'Kəsir'}</small><b class="num ${ok?'pos':'neg'}">${fmt(d)}</b></div></div><div class="note" style="text-align:center;margin-top:8px">${esc(nm)}: ${msg}</div></div>`;
+  const msg=!inc?'Gəlir yazılmayıb.':ok?`Gəlirin ${Math.round(d/inc*100)}%-i qalıb.`:`Xərc gəlirdən ${fmt(d)} çoxdur.`;
+  return `<div class="card"><small style="color:var(--mute);font-size:14px">${esc(nm)} xərclənib</small><div class="num ${sp?'neg':''}" style="font-size:40px;font-weight:700;line-height:1.1;margin:2px 0 4px">${fmt(sp)}</div><div class="note" style="margin:0 0 14px">${msg}</div><div class="trio"><div><small>Gəlir</small><b class="num pos">${fmt(inc)}</b></div><div><small>Xərc</small><b class="num neg">${fmt(sp)}</b></div><div><small>${ok?'Qənaət':'Kəsir'}</small><b class="num ${ok?'pos':'neg'}">${fmt(d)}</b></div></div></div>`;
 }
+// B. Gündəlik xərc qrafiki (SVG, kitabxanasız)
+function barsHtml(r){
+  const today=ymd(new Date()),day=ST.p==='day';
+  const from=day?addDays(r.from,-6):r.from,to=day?r.from:r.to;
+  const days=[];for(let k=from;k<=to&&days.length<40;k=addDays(k,1))days.push(k);
+  const m=spendDays(from,to),vals=days.map(k=>m[k]||0),mx=Math.max(...vals);
+  if(!mx)return '';
+  const da=S.acc.filter(a=>isB(a)||a.daily),lb=r2(da.reduce((s,a)=>s+Math.max(0,a.balance),0));
+  const useLim=ST.p==='month'&&ST.off===0&&lb>0;
+  let ref,rl;
+  if(useLim){ref=r2(lb/daysLeft());rl='Bu günkü limit'}
+  else{const el=days.filter(k=>k<=today).length||1;ref=r2(vals.reduce((a,b)=>a+b,0)/el);rl='Gündəlik orta'}
+  const W=320,H=156,pt=18,pb=22,ch=H-pt-pb,n=days.length,bw=W/n,g=Math.min(4,bw*.22),top=Math.max(mx,ref)*1.05,Y=v=>pt+ch-v/top*ch;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;overflow:visible"><line x1="0" x2="${W}" y1="${pt+ch}" y2="${pt+ch}" style="stroke:var(--line)" stroke-width="1"/>`;
+  let hit='';
+  days.forEach((k,i)=>{
+    const v=vals[i],x=i*bw+g/2,w=bw-g,h=v?Math.max(2,v/top*ch):0,d=pdate(k),sel=day&&k===r.from;
+    const hot=v===mx||(useLim&&v>ref),fill=hot?'var(--neg)':sel?'var(--ink)':'var(--mute)',op=hot||sel?1:.55;
+    s+=`<rect x="${x.toFixed(1)}" y="${(pt+ch-h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.max(0,Math.min(3,w/2)).toFixed(1)}" style="fill:${fill}" opacity="${op}"/>`;
+    if(v)hit+=`<rect x="${(i*bw).toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${H}" fill="transparent" onclick="goDay('${k}')" style="cursor:pointer"/>`;
+    const lab=day||ST.p==='week'?WDS[d.getDay()]:(d.getDate()===1||d.getDate()%5===0?d.getDate():'');
+    if(lab!=='')s+=`<text x="${(i*bw+bw/2).toFixed(1)}" y="${H-7}" text-anchor="middle" font-size="10" style="fill:${sel?'var(--ink)':'var(--mute)'}"${sel?' font-weight="700"':''}>${lab}</text>`;
+  });
+  const cx=Math.min(W-22,Math.max(22,vals.indexOf(mx)*bw+bw/2));
+  s+=`<text x="${cx.toFixed(1)}" y="${(Y(mx)-4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" style="fill:var(--neg)">${fmt0(mx)}</text>`;
+  s+=`<line x1="0" x2="${W}" y1="${Y(ref).toFixed(1)}" y2="${Y(ref).toFixed(1)}" stroke-dasharray="3 3" stroke-width="1" style="stroke:var(--ink)" opacity=".5" pointer-events="none"/>`+hit+`</svg>`;
+  return `<div class="card"><h3 style="margin:0 0 2px;font-size:15px">${day?'Son 7 gün':'Gündəlik xərc'}</h3><div class="note" style="margin:0 0 8px">Sütuna toxun: həmin günün əməliyyatları açılır.</div>${s}<div class="leg"><span><i style="background:var(--neg)"></i>${useLim?'Limitdən çox / ən yüksək':'Ən yüksək gün'}</span><span><i style="background:var(--ink);height:2px;vertical-align:3px;opacity:.5"></i>${rl}: ${fmt(ref)}</span></div></div>`;
+}
+// C. Kateqoriyalar: üfüqi bar-lar + əvvəlki dövrlə fərq
+function catHtml(rows,tot,prev,col){
+  const mx=rows[0][1];
+  return `<div class="card"><h3 style="margin:0 0 2px;font-size:15px">Kateqoriyalar</h3><div class="note" style="margin:0 0 4px">Sağda: əvvəlki dövrlə fərq. Toxun: əməliyyatlar.</div>`+rows.map((x,i)=>{
+    const d=dlt(x[1],prev[x[0]]||0);
+    return `<div class="acc" style="display:block" onclick="goCat(${i})"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span class="dot" style="background:${col(x[0])}"></span><span class="n">${esc(x[0])}</span><span class="t num">${(x[1]/tot*100).toFixed(1)}%</span></div><div style="text-align:right;flex:none"><div class="b num neg">${fmt(x[1])}</div>${d?`<div class="t num ${d.cls}">${d.txt}</div>`:''}</div></div><div class="bar"><i style="width:${x[1]/mx*100}%;background:${col(x[0])}"></i></div></div>`}).join('')+`</div>`;
+}
+// D. Müqayisə: qısa cümlələr
+function cmpHtml(r,pr,cur,prev){
+  const tot=r2(Object.values(cur).reduce((x,y)=>x+y,0)),ptot=r2(Object.values(prev).reduce((x,y)=>x+y,0)),P=ST.p,now=ST.off===0;
+  const ref=(now?{day:'dünənə',week:'keçən həftəyə',month:'keçən aya'}:{day:'əvvəlki günə',week:'əvvəlki həftəyə',month:'əvvəlki aya'})[P];
+  const vs=(now?{day:'Dünənlə',week:'Keçən həftə ilə',month:'Keçən ayla'}:{day:'Əvvəlki gün ilə',week:'Əvvəlki həftə ilə',month:'Əvvəlki ayla'})[P];
+  const pn=now?{day:'dünən',week:'keçən həftə',month:'keçən ay'}[P]:pr.label;
+  if(!ptot)return `<div class="card"><div class="empty">Müqayisə üçün əvvəlki dövrdə (${esc(pn)}) xərc yoxdur.</div></div>`;
+  const note=pr.cut?`<div class="note" style="margin:0 0 6px">Bu ${P==='week'?'həftə':'ay'} hələ bitməyib, ona görə ${P==='week'?'keçən həftənin':'keçən ayın'} ilk ${pr.cut} günü ilə müqayisə olunur.</div>`:'';
+  const names=[...new Set([...Object.keys(cur),...Object.keys(prev)])].map(n=>[n,cur[n]||0,prev[n]||0]).filter(x=>dlt(x[1],x[2]).txt!=='eyni').sort((a,b)=>Math.abs(b[1]-b[2])-Math.abs(a[1]-a[2]));
+  const sent=(n,c,p)=>{
+    if(!p)return `${esc(n)} kateqoriyasında əvvəl xərc olmayıb, indi ${fmt(c)} xərclənib`;
+    if(!c)return `${esc(n)} kateqoriyasında bu dövrdə xərc yoxdur (əvvəl ${fmt(p)} idi)`;
+    const pc=Math.round(Math.abs(c-p)/p*100);
+    return `${esc(n)} kateqoriyasında ${ref} nisbətən ${pc}% ${c>p?'çox':'az'} xərcləmisiniz`};
+  const td=dlt(tot,ptot),tp=Math.round(Math.abs(tot-ptot)/ptot*100),lines=[];
+  lines.push(`<div class="ins"><b class="${td.cls}">${td.arr}</b><span>${tp===0?`Ümumi xərcləriniz ${ref} nisbətən demək olar ki, eynidir`:`Ümumi xərcləriniz ${ref} nisbətən <b class="${td.cls}" style="display:inline;width:auto">${tp}% ${tot>ptot?'çoxdur':'azdır'}</b>`}</span></div>`);
+  names.slice(0,2).forEach(x=>{const d=dlt(x[1],x[2]);lines.push(`<div class="ins"><b class="${d.cls}">${d.arr}</b><span>${sent(x[0],x[1],x[2])}</span></div>`)});
+  return `<div class="card"><h3 style="margin:0 0 6px;font-size:15px">${vs} müqayisə</h3>${note}${lines.join('')}<div class="cv num" style="display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin-top:8px"><span>${esc(now?{day:'Bu gün',week:'Bu həftə',month:'Bu ay'}[P]:r.label)}: ${fmt(tot)}</span><span>${esc(pn[0].toUpperCase()+pn.slice(1))}: ${fmt(ptot)}</span></div></div>`;
+}
+// E. Ay sonu proqnozu + büdcənin bitmə tarixi
 function fcHtml(tot){
   if(ST.p!=='month'||ST.off!==0||!tot)return '';
   const n=new Date(),dom=n.getDate(),L=new Date(n.getFullYear(),n.getMonth()+1,0).getDate();
   if(dom<3)return '';
   const avg=tot/dom,proj=avg*L,pf=prangeAt(-1),full=r2(Object.values(spendBy(pf.from,pf.to)).reduce((x,y)=>x+y,0));
-  return `<div class="card"><h3 style="margin:0 0 6px;font-size:15px">Ay sonu proqnozu</h3><div class="num neg" style="font-size:26px;font-weight:700">~${fmt0(proj)}</div><div class="note">Bu tempdə (gündə orta ${fmt(avg)}) ay sonuna qədər təxminən bu qədər xərcləyəcəksən.${full?` Keçən ay cəmi ${fmt0(full)} xərclənmişdi.`:''}</div></div>`;
+  const B=S.acc.filter(isB);let bm='';
+  if(B.length){
+    const bal=r2(B.reduce((s,a)=>s+Math.max(0,a.balance),0)),ms=ymd(new Date(n.getFullYear(),n.getMonth(),1));
+    const bsp=r2(S.tx.reduce((a,t)=>{if(txKind(t)!=='spend'||ymd(new Date(t.d))<ms)return a;return Object.keys(t.deltas).some(k=>{const x=A(k);return x&&isB(x)})?a+t.amt:a},0)),ab=bsp/dom;
+    if(bal<=0)bm='Xərc büdcən artıq bitib.';
+    else if(ab>0){
+      const left=bal/ab;
+      if(left<L-dom){const e=new Date(n.getFullYear(),n.getMonth(),dom+Math.floor(left));bm=`Bu tempdə xərc büdcən təxminən <b>${dmy(e).slice(0,5)}</b> tarixində bitəcək.`}
+      else bm='Bu tempdə xərc büdcən ay sonuna çatır.';
+    }
+  }
+  return `<div class="card"><h3 style="margin:0 0 6px;font-size:15px">Ay sonu proqnozu</h3><div class="num neg" style="font-size:26px;font-weight:700">~${fmt0(proj)}</div><div class="note">Bu tempdə (gündə orta ${fmt(avg)}) ay sonuna qədər təxminən bu qədər xərcləyəcəksən.${full?` Keçən ay cəmi ${fmt0(full)} xərclənmişdi.`:''}</div>${bm?`<div class="ins" style="margin-top:8px"><b>•</b><span>${bm}</span></div>`:''}</div>`;
+}
+// F. Ağıllı müşahidələr (avtomatik)
+function obsHtml(r,rows,tot){
+  const L=[],today=ymd(new Date()),to=r.to>today?today:r.to,day=ST.p==='day';
+  if(!day){
+    const m=spendDays(r.from,r.to),ks=Object.keys(m).sort((a,b)=>m[b]-m[a]);
+    if(ks.length>1){const d=pdate(ks[0]);L.push(`Ən bahalı gün: <b>${dmy(d).slice(0,5)}, ${WDN[d.getDay()]}</b> · ${fmt(m[ks[0]])}`)}
+    let we=0,wn=0,wd=0,dn=0;
+    for(let k=r.from;k<=to;k=addDays(k,1)){const w=pdate(k).getDay(),v=m[k]||0;if(w===0||w===6){we+=v;wn++}else{wd+=v;dn++}}
+    if(wn>=2&&dn>=2&&we>0&&wd>0){
+      const a=we/wn,b=wd/dn,x=a/b;
+      if(x>=1.5)L.push(`Həftə sonları həftə içindən <b>${x.toFixed(1)}×</b> çox xərcləyirsən`);
+      else if(x<=2/3)L.push(`Həftə içi həftə sonundan <b>${(1/x).toFixed(1)}×</b> çox xərcləyirsən`);
+    }
+  }
+  if(rows.length)L.push(`Ən çox xərc etdiyin yer: <b>${esc(rows[0][0])}</b> (${Math.round(rows[0][1]/tot*100)}%)`);
+  const g={};
+  S.tx.forEach(t=>{if(txKind(t)!=='spend')return;const k=ymd(new Date(t.d));if(k<r.from||k>r.to)return;const raw=noteOf(t),f=fold(raw).trim();if(!f||raw==='Xərc')return;const x=g[f]||(g[f]={raw,c:0,s:0});x.c++;x.s=r2(x.s+t.amt)});
+  const top=Object.values(g).sort((a,b)=>b.c-a.c||b.s-a.s)[0];
+  if(top&&top.c>=3)L.push(`Ən çox təkrarlanan qeyd: <b>${esc(top.raw)}</b> · ${top.c} dəfə, cəmi ${fmt(top.s)}`);
+  if(!L.length)return '';
+  return `<div class="card"><h3 style="margin:0 0 6px;font-size:15px">Müşahidələr</h3>${L.map(x=>`<div class="ins"><b>•</b><span>${x}</span></div>`).join('')}</div>`;
 }
 function renderStat(){
   const r=prange(),pr=prevRange(),cur=spendBy(r.from,r.to),prev=spendBy(pr.from,pr.to);
-  const rows=lastRows=Object.entries(cur).sort((a,b)=>b[1]-a[1]),tot=rows.reduce((x,y)=>x+y[1],0);
+  const rows=lastRows=Object.entries(cur).sort((a,b)=>b[1]-a[1]),tot=r2(rows.reduce((x,y)=>x+y[1],0));
   const col=c=>{const i=S.cats.indexOf(c);return PAL[(i<0?7:i)%PAL.length]};
-  let cum=0;
-  const arcs=rows.map(([c,v])=>{const q=v/tot*100,e=`<circle cx="21" cy="21" r="15.915" fill="none" stroke="${col(c)}" stroke-width="7" stroke-dasharray="${q} ${100-q}" stroke-dashoffset="${25-cum}"/>`;cum+=q;return e}).join('');
   const P=[['day','Gün'],['week','Həftə'],['month','Ay']];
   let h=seg()+`<div class="seg">${P.map(x=>`<button class="${ST.p===x[0]?'on':''}" onclick="setP('${x[0]}')">${x[1]}</button>`).join('')}</div>
-  <div data-sw="p"><div class="pnav"><button onclick="stepP(-1)" aria-label="Əvvəlki">‹</button><b>${r.label}</b><button onclick="stepP(1)" ${ST.off>=0?'disabled':''} aria-label="Sonrakı">›</button></div>`+sumHtml(r,sumKind(r.from,r.to,'add'),r2(tot));
-  if(!rows.length)h+=`<div class="card"><div class="empty">Bu dövrdə xərc yoxdur.</div></div></div>`;
-  else h+=`<div class="card"><svg viewBox="0 0 42 42" width="230" height="230" style="display:block;margin:4px auto"><circle cx="21" cy="21" r="15.915" fill="none" style="stroke:var(--line)" stroke-width="7"/>${arcs}<text x="21" y="20" text-anchor="middle" font-size="2.6" style="fill:var(--mute)">Xərc cəmi</text><text x="21" y="24.5" text-anchor="middle" font-size="3.6" font-weight="700" style="fill:var(--ink)">${fmt(tot)}</text></svg>
-  <div class="note" style="text-align:center">Ən çox: ${esc(rows[0][0])}</div></div></div>`;
-  h+=fcHtml(tot);
-  h+=cmpHtml(r,pr,cur,prev,col);
-  if(rows.length)h+=`<div class="card">`+rows.map((x,i)=>`<div class="acc" onclick="goCat(${i})"><div style="display:flex;align-items:center;gap:10px"><span class="dot" style="background:${col(x[0])}"></span><div><div class="n">${esc(x[0])}</div><div class="t">${(x[1]/tot*100).toFixed(1)}%</div></div></div><div class="b num neg">${fmt(x[1])}</div></div>`).join('')+`</div>`;
+  <div data-sw="p"><div class="pnav"><button onclick="stepP(-1)" aria-label="Əvvəlki">‹</button><b>${r.label}</b><button onclick="stepP(1)" ${ST.off>=0?'disabled':''} aria-label="Sonrakı">›</button></div>`+headHtml(r,sumKind(r.from,r.to,'add'),tot)+barsHtml(r)+`</div>`;
+  if(!rows.length)h+=`<div class="card"><div class="empty">Bu dövrdə xərc yoxdur.</div></div>`;
+  else h+=catHtml(rows,tot,prev,col)+cmpHtml(r,pr,cur,prev)+fcHtml(tot)+obsHtml(r,rows,tot);
   $('#app').innerHTML=h;
 }
+function goDay(k){F={type:'spend',cat:'all',from:k,to:k,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
 function goCat(i){const r=prange();F={type:'spend',cat:lastRows[i][0],from:r.from,to:r.to,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
 
 const TH='xerc-theme';
