@@ -531,7 +531,7 @@ function render(){
 }
 
 function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
-function closeS(){$('#sheet').hidden=true}
+function closeS(){const sh=$('#sheet');sh.hidden=true;sh.style.top=sh.style.height=sh.style.bottom='';$('#box').style.maxHeight=''}
 const kbUp=()=>{const v=window.visualViewport;return v?(window.innerHeight-v.height)>100:true};
 const typing=()=>{const a=document.activeElement;return !!(a&&!a.classList.contains('hs')&&$('#box').contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&kbUp())};
 // klaviatura açıqdırsa kənara toxunuş yalnız klaviaturanı bağlayır, pəncərəni yox
@@ -877,6 +877,23 @@ function swDel(id){
 })();
 
 try{localStorage.removeItem('xerc-lock')}catch(e){}
+
+
+// ---- Klaviatura açıq olanda pəncərə görünən sahəyə (klaviaturanın üstünə) bərkidilir:
+// başqa xanaya toxunanda iPhone səhifəni sürüşdürüb pəncərəni "yaxınlaşdırmır"
+(function(){
+  const vv=window.visualViewport;if(!vv)return;
+  const sh=$('#sheet'),bx=$('#box');
+  function fit(){
+    if(sh.hidden)return;
+    if(window.innerHeight-vv.height>100){
+      sh.style.top=vv.offsetTop+'px';sh.style.height=vv.height+'px';sh.style.bottom='auto';
+      bx.style.maxHeight=Math.max(200,vv.height-12)+'px';
+    }else{sh.style.top=sh.style.height=sh.style.bottom='';bx.style.maxHeight=''}
+  }
+  vv.addEventListener('resize',fit);vv.addEventListener('scroll',fit);
+  sh.addEventListener('focusin',()=>{[0,50,150,300,500].forEach(d=>setTimeout(fit,d))});
+})();
 
 let popAt=0;
 document.addEventListener('touchstart',()=>{},{passive:true});
