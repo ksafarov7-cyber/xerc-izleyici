@@ -118,13 +118,13 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
 .sw button.swdel:active{transform:translateX(calc(84px + var(--tx,0px)));opacity:.85}
 .dock{position:fixed;left:0;right:0;bottom:max(6px,calc(env(safe-area-inset-bottom,0px) - 16px));max-width:560px;margin:0 auto;padding:0 14px 0 10px;display:flex;gap:10px;align-items:center;z-index:8;pointer-events:none}
 .dock>*{pointer-events:auto}
-.tb{position:relative;z-index:0;flex:1;min-width:0;height:64px;display:flex;align-items:center;gap:0;padding:4px;border-radius:32px}
+.tb{position:relative;z-index:0;flex:1;min-width:0;height:64px;display:flex;align-items:center;gap:0;padding:4px 7px;border-radius:32px}
 .tb::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--tbg);border:1px solid var(--glb);box-shadow:var(--shd),inset 0 1px 0 rgba(255,255,255,.4);-webkit-backdrop-filter:blur(8px) saturate(170%);backdrop-filter:blur(8px) saturate(170%);pointer-events:none}
 .tb button{flex:1;min-width:0;height:100%;border:0;border-radius:30px;background:none;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10.5px;font-weight:600;font-family:inherit;padding:0 1px;position:relative;z-index:1;transition:color .25s}
 .tb button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tb button svg{width:24px;height:24px;flex:none}
 .tb button.on{color:var(--tint)}
-.pill{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:28px;background:var(--tbon);box-shadow:0 1px 8px rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .42s cubic-bezier(.3,1.25,.4,1),width .42s cubic-bezier(.3,1.25,.4,1);pointer-events:none}
+.pill{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:28px;background:var(--tbon);box-shadow:0 1px 8px rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,.5);transition:transform .42s cubic-bezier(.3,1.1,.4,1),width .42s cubic-bezier(.3,1.1,.4,1);pointer-events:none}
 @media(prefers-reduced-motion:reduce){.pill{transition:none}}
 .dock .fab{position:relative;z-index:0;left:auto;bottom:auto;transform:none;width:64px;height:64px;flex:none;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--fabbg);color:var(--onacc);border:1px solid var(--glb);box-shadow:var(--shd);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
 .dock .fab svg{width:26px;height:26px}
@@ -527,7 +527,7 @@ const TABS=[['home','Ana səhifə',TI('<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5
 function movePill(instant){
   const t=$('#tb'),b=t&&t.querySelector('button.on'),p=t&&t.querySelector('.pill');if(!b||!p)return;
   if(instant)p.style.transition='none';
-  p.style.width=(b.offsetWidth+6)+'px';p.style.transform='translateX('+(b.offsetLeft-3)+'px)';
+  p.style.width=(b.offsetWidth+8)+'px';p.style.transform='translateX('+(b.offsetLeft-4)+'px)';
   if(instant){void p.offsetWidth;p.style.transition=''}
 }
 function updTabs(){
@@ -867,13 +867,19 @@ function importD(){
     if(e.touches.length!==1)return;
     if($('#sheet').hidden&&!e.target.closest('input:not(.hs),select,textarea'))mode=1;
   },{passive:true});
+  // kənardan başlayan üfüqi çəkmədə iPhone-un öz geri jestini söndürməyə cəhd
+  addEventListener('touchmove',e=>{
+    if(mode!==1||e.touches.length!==1||!e.cancelable)return;
+    const t=e.touches[0],W=innerWidth;
+    if((x0<=30||x0>=W-30)&&Math.abs(t.clientX-x0)>Math.abs(t.clientY-y0))e.preventDefault();
+  },{passive:false});
   addEventListener('touchend',e=>{
     if(!mode)return;const m=mode;mode=0;
     const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;
     if(m===2)return;
     if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6||Date.now()-t0>700)return;
     if(view==='stat'&&tg.closest&&tg.closest('[data-sw="p"]')){stepP(dx<0?1:-1);return}
-    if(tg.closest&&!tg.closest('.sw .swc,[data-sw="p"]')&&![...document.querySelectorAll('.sw .swc')].some(r=>r.style.transform)&&(dx<0||x0>28)){
+    if(tg.closest&&!tg.closest('.sw .swc,[data-sw="p"]')&&![...document.querySelectorAll('.sw .swc')].some(r=>r.style.transform)){
       let el=tg,scr=false;while(el&&el!==document.body){if(el.scrollWidth>el.clientWidth+2&&/(auto|scroll)/.test(getComputedStyle(el).overflowX)){scr=true;break}el=el.parentElement}
       const i=VW.indexOf(view),n=dx<0?i+1:i-1;
       if(!scr&&i>=0&&n>=0&&n<VW.length){hap('tick');setView(VW[n])}
