@@ -873,10 +873,10 @@ function importD(){
     if(m===2)return;
     if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6||Date.now()-t0>700)return;
     if(view==='stat'&&tg.closest&&tg.closest('[data-sw="p"]')){stepP(dx<0?1:-1);return}
-    if(dx<0&&tg.closest&&!tg.closest('.sw .swc,[data-sw="p"]')&&![...document.querySelectorAll('.sw .swc')].some(r=>r.style.transform)){
+    if(tg.closest&&!tg.closest('.sw .swc,[data-sw="p"]')&&![...document.querySelectorAll('.sw .swc')].some(r=>r.style.transform)&&(dx<0||x0>28)){
       let el=tg,scr=false;while(el&&el!==document.body){if(el.scrollWidth>el.clientWidth+2&&/(auto|scroll)/.test(getComputedStyle(el).overflowX)){scr=true;break}el=el.parentElement}
-      const i=VW.indexOf(view);
-      if(!scr&&i>=0&&i<VW.length-1){hap('tick');setView(VW[i+1])}
+      const i=VW.indexOf(view),n=dx<0?i+1:i-1;
+      if(!scr&&i>=0&&n>=0&&n<VW.length){hap('tick');setView(VW[n])}
     }
   },{passive:true});
   // alt pəncərəni (sheet) aşağı çəkib bağlamaq
