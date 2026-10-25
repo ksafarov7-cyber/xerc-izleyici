@@ -716,19 +716,24 @@ function onNote(el){
 }
 function onCatManual(el){el.dataset.m=1;$('#f-hint').hidden=true}
 
-function openOp(kind){
+function opKind(k){
+  const g=i=>$(i)?$(i).value:'';
+  openOp(k,{amt:g('#f-amt'),note:g('#f-note'),date:g('#f-date')});
+}
+function openOp(kind,dr){
+  dr=dr||{};
   if(!S.acc.length)return alert('Əvvəlcə hesab yarat.');
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   const T=[['spend','Xərc'],['add','Əlavə et'],['move','Transfer']];
-  let h=`<div class="tabs">${T.map(t=>`<button class="${t[0]===kind?'on':''}" onclick="openOp('${t[0]}')">${t[1]}</button>`).join('')}</div><label>Məbləğ</label>${amtF('f-amt','')}`;
-  if(kind==='add')h+=`<label>Qeyd (istəyə bağlı)</label><input id="f-note">
+  let h=`<div class="tabs">${T.map(t=>`<button class="${t[0]===kind?'on':''}" onclick="opKind('${t[0]}')">${t[1]}</button>`).join('')}</div><label>Məbləğ</label>${amtF('f-amt',esc(dr.amt||''))}`;
+  if(kind==='add')h+=`<label>Qeyd (istəyə bağlı)</label><input id="f-note" value="${esc(dr.note||'')}">
     <label>Hansı hesaba</label><select id="f-to">${opts(S.acc,S.last.to)}</select>
     <div class="note">Xərc büdcəsinə əlavə etsən, həmin məbləğ ümumi puldan çıxılır və gündəlik limit artır.</div>`;
   if(kind==='spend'){
     if(!R.length)return alert('Xərc etmək üçün pul hesabı lazımdır.');
     buildNotes();
     const L=S.last,bs=B.some(a=>a.id===L.bud)?L.bud:L.bud===''?'':(B[0]||{}).id;
-    h+=`<label>Qeyd (istəyə bağlı)</label><input id="f-note" list="f-notes" autocomplete="off" oninput="onNote(this)" onchange="onNote(this)"><datalist id="f-notes">${NM.slice(0,40).map(x=>`<option value="${esc(x.raw)}">`).join('')}</datalist>
+    h+=`<label>Qeyd (istəyə bağlı)</label><input id="f-note" value="${esc(dr.note||'')}" list="f-notes" autocomplete="off" oninput="onNote(this)" onchange="onNote(this)"><datalist id="f-notes">${NM.slice(0,40).map(x=>`<option value="${esc(x.raw)}">`).join('')}</datalist>
     <label>Hansı hesabdan</label><select id="f-from">${opts(R,L.from)}</select>
     <label>Kateqoriya</label><select id="f-catg" onchange="onCatManual(this)">${S.cats.map(c=>`<option ${c===L.cat?'selected':''}>${c}</option>`).join('')}</select>
     <div class="note" id="f-hint" hidden>Kateqoriya əvvəlki eyni qeydə görə seçildi.</div>
@@ -737,13 +742,13 @@ function openOp(kind){
     <div class="note">Büdcə seçsən (məs. Aylıq xərc), məbləğ ondan da azalır. Hesabda pul çatmasa, qalıq qırmızı olur.</div>`;}
   if(kind==='move'){
     if(R.length<2)return alert('Transfer üçün ən azı iki hesab lazımdır (büdcə hesabları transferdə iştirak etmir).');
-    h+=`<label>Qeyd (istəyə bağlı)</label><input id="f-note">
+    h+=`<label>Qeyd (istəyə bağlı)</label><input id="f-note" value="${esc(dr.note||'')}">
     <label>Haradan</label><select id="f-from">${opts(R)}</select><label>Hara</label><select id="f-to">${opts(R,R[1].id)}</select>
     <div class="note">Göndərən hesabda pul azdırsa, çatmayan hissə qırmızı qalıq kimi görünür. Kreditə ödəniş üçün də transferdən istifadə et.</div>`;}
-  h+=`<label>Tarix</label><input id="f-date" type="date" value="${ymd(new Date())}" max="${ymd(new Date())}"><button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
+  h+=`<label>Tarix</label><input id="f-date" type="date" value="${dr.date||ymd(new Date())}" max="${ymd(new Date())}"><button class="btn" onclick="doOp('${kind}')">Təsdiq et</button>`;
   openS(h);
   // toxunuş jestinin içində olduğu üçün klaviatura dərhal açılır
-  const fa=$('#f-amt');if(fa)fa.focus({preventScroll:true});
+  const fa=$('#f-amt');if(fa&&!dr.amt)fa.focus({preventScroll:true});
   hap('tick');
 }
 function post(label,sign,amt,deltas,x={}){
