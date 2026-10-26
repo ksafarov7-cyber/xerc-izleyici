@@ -220,6 +220,7 @@ function doBack(quiet){
 }
 function setView(v){if(v===view)return;NAV.push(snap());if(NAV.length>40)NAV.shift();const d=VW.indexOf(v)-VW.indexOf(view);view=v;render();scrollTo(0,0);anim(d)}
 function setF(k,v){F[k]=v;txLim=300;render()}
+function setFD(k,v){F[k]=v;txLim=300;const r=$('#txres');if(r)r.innerHTML=txList();else render()}
 function moreTx(){txLim+=300;$('#txres').innerHTML=txList()}
 function clearF(){F={type:'all',cat:'all',from:'',to:'',q:''};txLim=300;render()}
 function quick(k){const n=new Date(),t=ymd(n);
@@ -259,7 +260,7 @@ function renderTx(){
   $('#app').innerHTML=seg()+`<div class="card"><div class="srch"><input id="q" type="text" enterkeyhint="search" autocomplete="off" placeholder="Axtar: qeyd, məbləğ, kateqoriya, tarix" value="${esc(F.q)}" oninput="updTx(this.value)"><button type="button" id="qx" onclick="clearQ()" ${F.q?'':'hidden'} aria-label="Axtarışı təmizlə">✕</button></div>
   <label>Növ</label><select onchange="setF('type',this.value)">${so('all',F.type,'Hamısı')}${so('add',F.type,'Əlavə')}${so('spend',F.type,'Xərc')}${so('move',F.type,'Transfer')}</select>
   <label>Kateqoriya</label><select onchange="setF('cat',this.value)">${so('all',F.cat,'Hamısı')}${S.cats.map(c=>so(c,F.cat,c)).join('')}</select>
-  <div class="two"><div><label>Başlanğıc tarix</label><input type="date" value="${F.from}" onchange="setF('from',this.value)"></div><div><label>Son tarix</label><input type="date" value="${F.to}" onchange="setF('to',this.value)"></div></div>
+  <div class="two"><div><label>Başlanğıc tarix</label><input type="date" value="${F.from}" onchange="setFD('from',this.value)"></div><div><label>Son tarix</label><input type="date" value="${F.to}" onchange="setFD('to',this.value)"></div></div>
   <div class="chips"><button onclick="quick('today')">Bu gün</button><button onclick="quick('week')">Bu həftə</button><button onclick="quick('month')">Bu ay</button><button onclick="clearF()">Təmizlə</button></div></div>
   <div id="txres">${txList()}</div>`;
 }
@@ -920,7 +921,7 @@ function swDel(id){
   const W=84;let row=null,x0=0,y0=0,base=0,dx=0,drag=false,dec=false;
   document.addEventListener('touchstart',e=>{
     const r=e.target.closest&&e.target.closest('.sw .swc');
-    if(!r||e.touches.length!==1||e.touches[0].clientX<=28){row=null;if(!r)swClose();return}
+    if(!r||e.touches.length!==1||e.touches[0].clientX<=28){row=null;if(!r&&!(e.target.closest&&e.target.closest('.swdel')))swClose();return}
     swClose(r);row=r;const t=e.touches[0];x0=t.clientX;y0=t.clientY;base=r.style.transform?-W:0;dx=0;drag=false;dec=false;
   },{passive:true});
   document.addEventListener('touchmove',e=>{
