@@ -580,21 +580,27 @@ function renderMain(){
 let DO=0;
 const dayK=o=>{const n=new Date();return ymd(new Date(n.getFullYear(),n.getMonth(),n.getDate()+o))};
 const firstDay=()=>S.tx.length?ymd(new Date(Math.min(...S.tx.map(t=>t.d)))):dayK(0);
-function stepD(n){
-  if(DO+n>1||(n<0&&dayK(DO)<=firstDay()))return;
-  DO+=n;hap('tick');
+// gün ofsetinin hüdudları: geri - ilk əməliyyatın günü, irəli - cari ayın son günü (növbəti aya keçmək olmaz)
+const dOff=s=>Math.round((pdate(s)-pdate(dayK(0)))/864e5);
+const dRange=()=>{const n=new Date();return[Math.min(0,dOff(firstDay())),new Date(n.getFullYear(),n.getMonth()+1,0).getDate()-n.getDate()]};
+function goD(o){
+  const[mn,mx]=dRange();o=Math.max(mn,Math.min(mx,o));
+  if(o===DO)return;
+  const n=o>DO?1:-1;DO=o;hap('tick');
   const e=$('.daily');if(!e)return;
   e.outerHTML=dailyHtml();
   const c=$('.daily');if(c)c.classList.add(n>0?'dn':'dp');
 }
+const stepD=n=>goD(DO+n);
+const pickD=v=>{if(v)goD(dOff(v))};
 function dailyHtml(){
   const accs=S.acc.filter(a=>isB(a)||a.daily);
   if(!accs.length)return '';
+  const[mn,mx]=dRange();DO=Math.max(mn,Math.min(mx,DO));
   const k=dayK(DO),[y,m,d]=k.split('-').map(Number),dl=new Date(y,m,0).getDate()-d+1,ds=dmy(new Date(y,m-1,d));
   const lbl=DO===0?'Bu gün':DO===-1?'Dünən':DO===1?'Sabah':ds;
   const when=DO<0?'həmin gün sonunda ':DO>0?'bu gün sonunda ':'';
-  const bst='text-align:center;line-height:1.25'+(DO?';cursor:pointer':'');
-  let h=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><div class="pnav" style="margin:8px 0 6px"><button onclick="stepD(-1)" ${k<=firstDay()?'disabled':''} aria-label="Əvvəlki gün">‹</button><b ${DO?'onclick="stepD(-DO)"':''} style="${bst}">${lbl}<small style="display:block;font-weight:500;color:var(--mute);font-size:11px">${DO?ds+' · bu günə qayıt':ds}</small></b><button onclick="stepD(1)" ${DO>=1?'disabled':''} aria-label="Sonrakı gün">›</button></div><p>${DO===0?'Bu gün':ds+' tarixi'} də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
+  let h=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><div class="pnav" style="margin:8px 0 6px"><button onclick="stepD(-1)" ${DO<=mn?'disabled':''} aria-label="Əvvəlki gün">‹</button><b style="position:relative;text-align:center;line-height:1.25;cursor:pointer;flex:1">${lbl}<small style="display:block;font-weight:500;color:var(--mute);font-size:11px">📅 ${ds}</small><input type="date" value="${k}" min="${dayK(mn)}" max="${dayK(mx)}" onchange="pickD(this.value)" aria-label="Tarix seç" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0;border:0;cursor:pointer"></b><button onclick="stepD(1)" ${DO>=mx?'disabled':''} aria-label="Sonrakı gün">›</button></div>${DO?`<div style="text-align:center;margin:-2px 0 6px"><button onclick="goD(0)" style="background:none;border:0;color:var(--tint);font:600 12px inherit;padding:4px 8px">Bu günə qayıt</button></div>`:''}<p>${DO===0?'Bu gün':ds+' tarixi'} də daxil olmaqla ayın sonuna ${dl} gün qalıb${DO>1?'. Aralıqdakı günlərdə xərc etməsən':''}</p>`;
   accs.forEach(a=>{
     let bal=a.balance,spent=0;
     S.tx.forEach(t=>{const v=t.deltas&&t.deltas[a.id];if(v===undefined)return;const x=ymd(new Date(t.d));if(x>k)bal-=v;else if(x===k&&v<0&&txKind(t)==='spend')spent-=v});
@@ -646,7 +652,14 @@ function openEdit(id){
 }
 function saveEdit(id){
   const d=readAcc();if(!d)return alert('Ad və məbləği düzgün yaz.');
-  const old=A(id).name;Object.assign(A(id),d);
+  const acc=A(id),old=acc.name,ob=acc.balance;Object.assign(acc,d);
+  // qalıq əl ilə dəyişdirilibsə, fərq əməliyyat kimi yazılır (artım → Əlavə, azalma → Xərc), "əl ilə" işarəsi ilə
+  const df=r2(acc.balance-ob);
+  if(df!==0){
+    const up=df>0,nt='Qalıq redaktəsi';
+    S.tx.unshift({id:uid(),d:Date.now(),label:nt+' · '+acc.name,sign:up?'+':'−',amt:Math.abs(df),deltas:{[id]:df},kind:up?'add':'spend',cat:up?undefined:'Digər',note:nt,manual:1});
+    S.tx.sort((x,y)=>y.d-x.d);
+  }
   if(old!==d.name)S.tx.forEach(t=>{if(t.deltas&&id in t.deltas){if(t.note===undefined&&txKind(t)!=='move')t.note=noteOf(t);t.label=mkLabel(t)}});
   save();closeS();render();
 }
