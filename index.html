@@ -135,6 +135,13 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
 .dock .fab{position:relative;z-index:0;left:auto;bottom:auto;transform:none;width:64px;height:64px;flex:none;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--fabbg);color:var(--onacc);border:1px solid var(--glb);box-shadow:var(--shd);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%)}
 .dock .fab svg{width:26px;height:26px}
 .dock .fab:active{transform:scale(.92);opacity:.9}
+@keyframes dfn{from{opacity:0;transform:perspective(900px) translateX(48px) rotateY(-14deg) scale(.96)}to{opacity:1;transform:none}}
+@keyframes dfp{from{opacity:0;transform:perspective(900px) translateX(-48px) rotateY(14deg) scale(.96)}to{opacity:1;transform:none}}
+@keyframes dgr{from{transform:scaleX(0)}}
+.daily.dn{animation:dfn .45s cubic-bezier(.2,.9,.25,1)}
+.daily.dp{animation:dfp .45s cubic-bezier(.2,.9,.25,1)}
+.daily.dn .bar i,.daily.dp .bar i{transform-origin:left;animation:dgr .65s cubic-bezier(.2,.8,.2,1) .12s both}
+@media(prefers-reduced-motion:reduce){.daily.dn,.daily.dp,.daily.dn .bar i,.daily.dp .bar i{animation:none}}
 </style>
 </head>
 <body>
@@ -554,26 +561,12 @@ function renderMain(){
   if(view==='set')return renderSet();
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
   const pos=total(R.filter(a=>a.balance>0)),neg=total(R.filter(a=>a.balance<0)),bud=B.reduce((s,a)=>s+Math.max(0,a.balance),0);
-  const net=pos+neg-bud,dl=daysLeft();
+  const net=pos+neg-bud;
   const cp=[neg<0?'borclar':'',B.length?'xərc büdcəsi':''].filter(Boolean).join(' və ');
-  const dailyAccs=S.acc.filter(a=>isB(a)||a.daily);
   let h=seg()+`<div class="hero"><small>${net<0?'Hazırda sənin borcun':'Hazırda sənin pulun'}</small>
   <div class="big num ${net<0?'neg':''}">${fmt(net)}</div>
   <div class="sub"><div>Pul olan hesablar<b class="num">${fmt(pos)}</b></div>${neg<0?`<div>Borclar<b class="num neg">${fmt(neg)}</b></div>`:''}${B.length?`<div>Xərc büdcəsi<b class="num neg">${fmt(bud)}</b></div>`:''}</div>${cp?`<small style="display:block;margin-top:10px;font-size:12px;opacity:.7">${cp[0].toUpperCase()+cp.slice(1)} ümumi məbləğdən çıxılır.</small>`:''}</div>`;
-  if(dailyAccs.length){
-    h+=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><p>Bu gün də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
-    const tdy=ymd(new Date());
-    dailyAccs.forEach(a=>{
-      const ok=a.balance>0;
-      const spent=r2(S.tx.reduce((q,t)=>{if(txKind(t)!=='spend'||ymd(new Date(t.d))!==tdy)return q;const d=t.deltas&&t.deltas[a.id];return d<0?q-d:q},0));
-      const L=Math.max(0,r2((a.balance+spent)/dl)),over=spent>L+0.004,left=r2(L-spent);
-      const pct=L>0?Math.min(100,spent/L*100):(spent>0?100:0);
-      const col=over?'var(--neg)':pct>=80?'#E08A00':'var(--pos)';
-      h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(a.balance)} ${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${L>0?'':'neg'}">${fmt(L)}<small> / gün</small></span></div>
-      <div style="padding:0 0 10px"><div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px"><span class="num"><span style="color:var(--mute)">Bu gün:</span> <b>${fmt(spent)}</b> <span style="color:var(--mute)">/ ${fmt(L)}</span></span><span class="num" style="color:${over?'var(--neg)':'var(--mute)'}">${over?'limit aşılıb · +'+fmt(spent-L):fmt(left)+' qalıb'}</span></div><div class="bar" style="height:8px"><i style="width:${pct.toFixed(1)}%;min-width:0;background:${col}"></i></div></div>`;
-    });
-    h+=`</div>`;
-  }
+  h+=dailyHtml();
   h+=tplHtml();
   h+=`<h2>Hesablar <span>${S.acc.length>1?`<button onclick="toggleSort()">${sortMode?'Hazır':'Sırala'}</button>`:''}<button onclick="openAcc()">+ Yeni</button></span></h2><div class="card">`;
   h+=S.acc.map((a,i)=>{const r_=`<div class="acc" ${sortMode?'':`onclick="goAcc('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`;return sortMode?r_:swW(r_,`delAcc('${a.id}')`,`openEdit('${a.id}')`)}).join('')
@@ -582,6 +575,37 @@ function renderMain(){
   h+=S.tx.slice(0,5).map(txRow).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
   h+=`</div>`;
   $('#app').innerHTML=h;
+}
+
+let DO=0;
+const dayK=o=>{const n=new Date();return ymd(new Date(n.getFullYear(),n.getMonth(),n.getDate()+o))};
+const firstDay=()=>S.tx.length?ymd(new Date(Math.min(...S.tx.map(t=>t.d)))):dayK(0);
+function stepD(n){
+  if(DO+n>1||(n<0&&dayK(DO)<=firstDay()))return;
+  DO+=n;hap('tick');
+  const e=$('.daily');if(!e)return;
+  e.outerHTML=dailyHtml();
+  const c=$('.daily');if(c)c.classList.add(n>0?'dn':'dp');
+}
+function dailyHtml(){
+  const accs=S.acc.filter(a=>isB(a)||a.daily);
+  if(!accs.length)return '';
+  const k=dayK(DO),[y,m,d]=k.split('-').map(Number),dl=new Date(y,m,0).getDate()-d+1,ds=dmy(new Date(y,m-1,d));
+  const lbl=DO===0?'Bu gün':DO===-1?'Dünən':DO===1?'Sabah':ds;
+  const when=DO<0?'həmin gün sonunda ':DO>0?'bu gün sonunda ':'';
+  const bst='text-align:center;line-height:1.25'+(DO?';cursor:pointer':'');
+  let h=`<div class="card daily"><h3>Gündəlik xərcləmə limiti</h3><div class="pnav" style="margin:8px 0 6px"><button onclick="stepD(-1)" ${k<=firstDay()?'disabled':''} aria-label="Əvvəlki gün">‹</button><b ${DO?'onclick="stepD(-DO)"':''} style="${bst}">${lbl}<small style="display:block;font-weight:500;color:var(--mute);font-size:11px">${DO?ds+' · bu günə qayıt':ds}</small></b><button onclick="stepD(1)" ${DO>=1?'disabled':''} aria-label="Sonrakı gün">›</button></div><p>${DO===0?'Bu gün':ds+' tarixi'} də daxil olmaqla ayın sonuna ${dl} gün qalıb</p>`;
+  accs.forEach(a=>{
+    let bal=a.balance,spent=0;
+    S.tx.forEach(t=>{const v=t.deltas&&t.deltas[a.id];if(v===undefined)return;const x=ymd(new Date(t.d));if(x>k)bal-=v;else if(x===k&&v<0&&txKind(t)==='spend')spent-=v});
+    bal=r2(bal);spent=r2(spent);
+    const ok=bal>0,L=Math.max(0,r2((bal+spent)/dl)),over=spent>L+0.004,left=r2(L-spent);
+    const pct=L>0?Math.min(100,spent/L*100):(spent>0?100:0);
+    const col=over?'var(--neg)':pct>=80?'#E08A00':'var(--pos)';
+    h+=`<div class="drow"><span>${esc(a.name)}<br><small class="num" style="color:var(--mute)">${fmt(bal)} ${when}${ok?'qalıb':'(qalmayıb)'}</small></span><span class="v num ${L>0?'':'neg'}">${fmt(L)}<small> / gün</small></span></div>
+    <div style="padding:0 0 10px"><div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px"><span class="num"><span style="color:var(--mute)">${lbl}:</span> <b>${fmt(spent)}</b> <span style="color:var(--mute)">/ ${fmt(L)}</span></span><span class="num" style="color:${over?'var(--neg)':'var(--mute)'}">${over?'limit aşılıb · +'+fmt(spent-L):fmt(left)+' qalıb'}</span></div><div class="bar" style="height:8px"><i style="width:${pct.toFixed(1)}%;min-width:0;background:${col}"></i></div></div>`;
+  });
+  return h+`</div>`;
 }
 
 function openS(h){$('#box').innerHTML=h;$('#sheet').hidden=false}
@@ -888,6 +912,7 @@ function importD(){
     if(m===2)return;
     if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6||Date.now()-t0>700)return;
     if(view==='stat'&&tg.closest&&tg.closest('[data-sw="p"]')){stepP(dx<0?1:-1);return}
+    if(view==='home'&&tg.closest&&tg.closest('.daily')){stepD(dx<0?1:-1);return}
     if(tg.closest&&!tg.closest('.sw .swc,[data-sw="p"]')&&![...document.querySelectorAll('.sw .swc')].some(r=>r.style.transform)){
       let el=tg,scr=false;while(el&&el!==document.body){if(el.scrollWidth>el.clientWidth+2&&/(auto|scroll)/.test(getComputedStyle(el).overflowX)){scr=true;break}el=el.parentElement}
       const i=VW.indexOf(view),n=dx<0?i+1:i-1;
@@ -929,7 +954,7 @@ function swDel(id){
   let W=84;let row=null,x0=0,y0=0,base=0,dx=0,drag=false,dec=false;
   document.addEventListener('touchstart',e=>{
     const r=e.target.closest&&e.target.closest('.sw .swc');
-    if(!r||e.touches.length!==1||e.touches[0].clientX<=28){row=null;if(!r&&!(e.target.closest&&e.target.closest('.swdel')))swClose();return}
+    if(!r||e.touches.length!==1||e.touches[0].clientX<=28){row=null;if(!r&&!(e.target.closest&&e.target.closest('.swdel,.swed')))swClose();return}
     swClose(r);row=r;W=+(r.parentNode.dataset.w)||84;const t=e.touches[0];x0=t.clientX;y0=t.clientY;base=r.style.transform?-W:0;dx=0;drag=false;dec=false;
   },{passive:true});
   document.addEventListener('touchmove',e=>{
