@@ -116,6 +116,12 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
 
 .sw.dr .swdel{transition:none}
 .sw button.swdel:active{transform:translateX(calc(84px + var(--tx,0px)));opacity:.85}
+.swed{position:absolute;right:84px;top:0;bottom:0;width:84px;transform:translateX(calc(168px + var(--tx,0px)));transition:transform .22s ease;border:0;background:#2F6FDE;color:#fff;display:flex;align-items:center;justify-content:center;padding:0;border-radius:0}
+.swed svg{width:24px;height:24px}
+.sw:not(.act) .swed{visibility:hidden}
+.sw.dr .swed{transition:none}
+.sw2 .swdel{transform:translateX(calc(168px + var(--tx,0px)))}
+.sw2 button.swdel:active,.sw2 button.swed:active{transform:translateX(calc(168px + var(--tx,0px)));opacity:.85}
 .dock{position:fixed;left:0;right:0;bottom:max(6px,calc(env(safe-area-inset-bottom,0px) - 16px));max-width:560px;margin:0 auto;padding:0 14px 0 10px;display:flex;gap:10px;align-items:center;z-index:8;pointer-events:none}
 .dock>*{pointer-events:auto}
 .tb{position:relative;z-index:0;flex:1;min-width:0;height:64px;display:flex;align-items:center;gap:0;padding:4px 7px;border-radius:32px}
@@ -249,7 +255,7 @@ function matchQ(t,q){
 }
 function txList(){
   const ds=t=>ymd(new Date(t.d));
-  const l=S.tx.filter(t=>(F.type==='all'||txKind(t)===F.type)&&(F.cat==='all'||catOf(t)===F.cat)&&(!F.from||ds(t)>=F.from)&&(!F.to||ds(t)<=F.to)&&(!F.q||matchQ(t,F.q)));
+  const l=S.tx.filter(t=>(F.type==='all'||txKind(t)===F.type)&&(F.cat==='all'||catOf(t)===F.cat)&&(!F.acc||(t.deltas&&F.acc in t.deltas))&&(!F.from||ds(t)>=F.from)&&(!F.to||ds(t)<=F.to)&&(!F.q||matchQ(t,F.q)));
   const sp=l.filter(t=>txKind(t)==='spend').reduce((a,t)=>a+t.amt,0);
   return `<div class="card sum"><span>${l.length} əməliyyat</span><span>Xərc cəmi <b class="num ${sp?'neg':''}">${fmt(sp)}</b></span></div>${dayGroups(l,txLim)}${l.length>txLim?`<button class="btn alt" onclick="moreTx()">Daha çox göstər · ${l.length-txLim} qalıb</button>`:''}`;
 }
@@ -259,6 +265,7 @@ function renderTx(){
   const so=(v,c,txt)=>`<option value="${v}" ${c===v?'selected':''}>${txt}</option>`;
   $('#app').innerHTML=seg()+`<div class="card"><div class="srch"><input id="q" type="text" enterkeyhint="search" autocomplete="off" placeholder="Axtar: qeyd, məbləğ, kateqoriya, tarix" value="${esc(F.q)}" oninput="updTx(this.value)"><button type="button" id="qx" onclick="clearQ()" ${F.q?'':'hidden'} aria-label="Axtarışı təmizlə">✕</button></div>
   <label>Növ</label><select onchange="setF('type',this.value)">${so('all',F.type,'Hamısı')}${so('add',F.type,'Əlavə')}${so('spend',F.type,'Xərc')}${so('move',F.type,'Transfer')}</select>
+  <label>Hesab</label><select onchange="setF('acc',this.value)">${so('',F.acc||'','Hamısı')}${S.acc.map(a=>so(a.id,F.acc||'',a.name)).join('')}</select>
   <label>Kateqoriya</label><select onchange="setF('cat',this.value)">${so('all',F.cat,'Hamısı')}${S.cats.map(c=>so(c,F.cat,c)).join('')}</select>
   <div class="two"><div><label>Başlanğıc tarix</label><input type="date" value="${F.from}" onchange="setFD('from',this.value)"></div><div><label>Son tarix</label><input type="date" value="${F.to}" onchange="setFD('to',this.value)"></div></div>
   <div class="chips"><button onclick="quick('today')">Bu gün</button><button onclick="quick('week')">Bu həftə</button><button onclick="quick('month')">Bu ay</button><button onclick="clearF()">Təmizlə</button></div></div>
@@ -425,6 +432,7 @@ function renderStat(){
   $('#app').innerHTML=h;
 }
 function goDay(k){NAV.push(snap());F={type:'spend',cat:'all',from:k,to:k,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
+function goAcc(id){if(Date.now()-swMoved<350)return;NAV.push(snap());F={type:'all',cat:'all',from:'',to:'',q:'',acc:id};txLim=300;view='tx';render();scrollTo(0,0)}
 function goCat(i){const r=prange();NAV.push(snap());F={type:'spend',cat:lastRows[i][0],from:r.from,to:r.to,q:''};txLim=300;view='tx';render();scrollTo(0,0)}
 
 const TH='xerc-theme';
@@ -568,7 +576,7 @@ function renderMain(){
   }
   h+=tplHtml();
   h+=`<h2>Hesablar <span>${S.acc.length>1?`<button onclick="toggleSort()">${sortMode?'Hazır':'Sırala'}</button>`:''}<button onclick="openAcc()">+ Yeni</button></span></h2><div class="card">`;
-  h+=S.acc.map((a,i)=>{const r_=`<div class="acc" ${sortMode?'':`onclick="openEdit('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`;return sortMode?r_:swW(r_,`delAcc('${a.id}')`)}).join('')
+  h+=S.acc.map((a,i)=>{const r_=`<div class="acc" ${sortMode?'':`onclick="goAcc('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`;return sortMode?r_:swW(r_,`delAcc('${a.id}')`,`openEdit('${a.id}')`)}).join('')
     ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div>`+rulesHtml()+`<h2>Son əməliyyatlar <button onclick="setView('tx')">Hamısı</button></h2><div class="card">`;
   h+=S.tx.slice(0,5).map(txRow).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
@@ -896,7 +904,7 @@ function importD(){
 
 // ---- Sola çəkib silmək (iPhone Mail kimi)
 let swMoved=0;
-const swW=(row,del)=>`<div class="sw"><button class="swdel" aria-label="Sil" onclick="swDelX(()=>${del})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>${row.replace('class="acc"','class="acc swc"')}</div>`;
+const swW=(row,del,edit)=>`<div class="sw${edit?' sw2':''}"${edit?' data-w="168"':''}>${edit?`<button class="swed" aria-label="Redaktə" onclick="swDelX(()=>${edit})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>`:''}<button class="swdel" aria-label="Sil" onclick="swDelX(()=>${del})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>${row.replace('class="acc"','class="acc swc"')}</div>`;
 function swDelX(f){hap('tick');f();swClose()}
 document.addEventListener('click',e=>{
   const r=e.target.closest&&e.target.closest('.sw .swc');if(!r)return;
@@ -918,11 +926,11 @@ function swDel(id){
   if(w){w.style.maxHeight=w.offsetHeight+'px';void w.offsetWidth;w.classList.add('gone');setTimeout(()=>rmTx(id),230)}else rmTx(id);
 }
 (function(){
-  const W=84;let row=null,x0=0,y0=0,base=0,dx=0,drag=false,dec=false;
+  let W=84;let row=null,x0=0,y0=0,base=0,dx=0,drag=false,dec=false;
   document.addEventListener('touchstart',e=>{
     const r=e.target.closest&&e.target.closest('.sw .swc');
     if(!r||e.touches.length!==1||e.touches[0].clientX<=28){row=null;if(!r&&!(e.target.closest&&e.target.closest('.swdel')))swClose();return}
-    swClose(r);row=r;const t=e.touches[0];x0=t.clientX;y0=t.clientY;base=r.style.transform?-W:0;dx=0;drag=false;dec=false;
+    swClose(r);row=r;W=+(r.parentNode.dataset.w)||84;const t=e.touches[0];x0=t.clientX;y0=t.clientY;base=r.style.transform?-W:0;dx=0;drag=false;dec=false;
   },{passive:true});
   document.addEventListener('touchmove',e=>{
     if(!row)return;const t=e.touches[0],mx=t.clientX-x0,my=t.clientY-y0;
