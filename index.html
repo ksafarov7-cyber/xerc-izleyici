@@ -487,33 +487,62 @@ function resetAll(){
   S=norm({acc:[],tx:[],rules:[],v:2});save();NAV.length=0;view='home';render();
 }
 function sched(r){return r.freq==='daily'?'hər gün':r.freq==='weekly'?'həftədə: '+WD.filter(w=>r.days.includes(w[1])).map(w=>w[0]).join(', '):'hər ayın '+r.dom+'-i'}
-const rulesHtml=()=>`<h2>Avtomatik xərclər <button onclick="openRule()">+ Yeni</button></h2><div class="card">`+(S.rules.map(r=>{const r_=`<div class="acc" onclick="openRuleEdit('${r.id}')"><div><div class="n">${esc(r.name)}</div><div class="t">${sched(r)} · ${esc(r.cat)}</div></div><div class="b num neg">${fmt(r.amt)}</div></div>`;return swW(r_,`delRule('${r.id}')`)}).join('')||`<div class="empty">Məsələn: hər gün Transport 2.40 ₼.</div>`)+`</div>`;
+const RT={spend:'Xərc',add:'Gəlir',move:'Transfer'};
+const rtype=r=>r.type||'spend';
+function rdesc(r){
+  const t=rtype(r),a=A(r.acc),b=r.to&&A(r.to);
+  if(t==='add')return `${sched(r)} · gəlir${a?' · '+esc(a.name):''}`;
+  if(t==='move')return `${sched(r)} · transfer${a&&b?' · '+esc(a.name)+' → '+esc(b.name):''}`;
+  return `${sched(r)} · ${esc(r.cat)}`;
+}
+const rulesHtml=()=>`<h2>Avtomatik əməliyyatlar <button onclick="openRule()">+ Yeni</button></h2><div class="card">`+(S.rules.map(r=>{const t=rtype(r),r_=`<div class="acc" onclick="openRuleEdit('${r.id}')"><div><div class="n">${esc(r.name)}</div><div class="t">${rdesc(r)}</div></div><div class="b num ${t==='add'?'pos':t==='spend'?'neg':''}">${t==='add'?'+':''}${fmt(r.amt)}</div></div>`;return swW(r_,`delRule('${r.id}')`)}).join('')||`<div class="empty">Məsələn: hər gün Transport 2.40 ₼, hər ayın 1-i maaş gəliri, ya da kartdan nağda transfer.</div>`)+`</div>`;
 function openRule(id){
   const R=S.acc.filter(a=>!isB(a)),B=S.acc.filter(isB);
-  if(!R.length)return alert('Əvvəlcə pul hesabı yarat.');
-  const r=id?S.rules.find(x=>x.id===id):null;
-  openS(`<h3>${r?'Avtomatik xərci dəyiş':'Yeni avtomatik xərc'}</h3>
-  <label>Ad</label><input id="r-name" placeholder="Məs: Avtobus" value="${r?esc(r.name):''}">
+  if(!S.acc.length)return alert('Əvvəlcə hesab yarat.');
+  const r=id?S.rules.find(x=>x.id===id):null,ty=r?rtype(r):'spend';
+  openS(`<h3>${r?'Avtomatik əməliyyatı dəyiş':'Yeni avtomatik əməliyyat'}</h3>
+  <label>Növ</label><select id="r-type" onchange="rt()">${Object.keys(RT).map(k=>`<option value="${k}" ${k===ty?'selected':''}>${RT[k]}</option>`).join('')}</select>
+  <label>Ad</label><input id="r-name" placeholder="Məs: Avtobus, Maaş, Nağd çıxarma" value="${r?esc(r.name):''}">
   <label>Məbləğ</label>${amtF('r-amt',r?r.amt:'','2.40')}
-  <label>Kateqoriya</label><select id="r-cat">${S.cats.map(c=>`<option ${r&&c===r.cat?'selected':''}>${c}</option>`).join('')}</select>
-  <label>Hansı hesabdan</label><select id="r-acc">${opts(R,r&&r.acc)}</select>
-  <label>Xərc büdcəsindən də çıx</label><select id="r-bud"><option value="">Yox</option>${opts(B,r?r.bud:(B[0]||{}).id)}</select>
+  <div id="r-s">
+    <label>Kateqoriya</label><select id="r-cat">${S.cats.map(c=>`<option ${r&&c===r.cat?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <label>Hansı hesabdan</label><select id="r-acc">${opts(R,ty==='spend'&&r?r.acc:'')}</select>
+    <label>Xərc büdcəsindən də çıx</label><select id="r-bud"><option value="">Yox</option>${opts(B,r&&ty==='spend'?r.bud:(B[0]||{}).id)}</select>
+  </div>
+  <div id="r-a" hidden>
+    <label>Hansı hesaba</label><select id="r-addto">${opts(S.acc,ty==='add'&&r?r.acc:'')}</select>
+  </div>
+  <div id="r-t" hidden>
+    <label>Haradan</label><select id="r-mfrom">${opts(R,ty==='move'&&r?r.acc:'')}</select>
+    <label>Hara</label><select id="r-mto">${opts(R,ty==='move'&&r?r.to:(R[1]||{}).id)}</select>
+  </div>
   <label>Təkrar</label><select id="r-freq" onchange="rf()">${[['daily','Hər gün'],['weekly','Həftənin seçdiyim günləri'],['monthly','Ayın müəyyən günü']].map(f=>`<option value="${f[0]}" ${r&&r.freq===f[0]?'selected':''}>${f[1]}</option>`).join('')}</select>
   <div id="r-w" class="wd" hidden>${WD.map(w=>`<label class="chk"><input type="checkbox" value="${w[1]}" ${r&&r.days.includes(w[1])?'checked':''}> ${w[0]}</label>`).join('')}</div>
   <div id="r-m" hidden><label>Ayın neçənci günü</label><input id="r-dom" inputmode="numeric" value="${r?r.dom:1}"></div>
-  <div class="note">${r?'Dəyişiklik yalnız bundan sonrakı xərclərə təsir edir, artıq yazılmış əməliyyatlar olduğu kimi qalır.':'Tətbiq açılanda keçən günlərin xərcləri də avtomatik əlavə olunur. Lazım olmayanı əməliyyatlardan silsən, pul geri qayıdır.'}</div>
+  <div class="note">${r?'Dəyişiklik yalnız bundan sonrakı əməliyyatlara təsir edir, artıq yazılmış əməliyyatlar olduğu kimi qalır.':'Tətbiq açılanda keçən günlərin əməliyyatları da avtomatik əlavə olunur. Lazım olmayanı əməliyyatlardan silsən, pul geri qayıdır.'}</div>
   <button class="btn" onclick="saveRule('${id||''}')">${r?'Yadda saxla':'Yarat'}</button>${r?`<button class="btn alt" onclick="delRule('${id}')">Dayandır və sil</button>`:''}`);
-  rf();
+  rf();rt();
 }
 function rf(){const f=$('#r-freq').value;$('#r-w').hidden=f!=='weekly';$('#r-m').hidden=f!=='monthly'}
+function rt(){const t=$('#r-type').value;$('#r-s').hidden=t!=='spend';$('#r-a').hidden=t!=='add';$('#r-t').hidden=t!=='move'}
 function saveRule(id){
-  const name=$('#r-name').value.trim(),amt=num($('#r-amt').value),freq=$('#r-freq').value;
+  const name=$('#r-name').value.trim(),amt=num($('#r-amt').value),freq=$('#r-freq').value,type=$('#r-type').value;
   const days=[...document.querySelectorAll('#r-w input:checked')].map(i=>+i.value);
   const dom=Math.min(31,Math.max(1,parseInt($('#r-dom').value)||1));
   if(!name||amt===null||amt<=0)return alert('Ad və məbləği düzgün yaz.');
   if(freq==='weekly'&&!days.length)return alert('Ən azı bir gün seç.');
-  const d={name,amt:r2(amt),cat:$('#r-cat').value,acc:$('#r-acc').value,bud:$('#r-bud').value,freq,days,dom};
-  if(id)Object.assign(S.rules.find(x=>x.id===id),d);
+  let x;
+  if(type==='add')x={acc:$('#r-addto').value,to:'',cat:'',bud:''};
+  else if(type==='move'){
+    x={acc:$('#r-mfrom').value,to:$('#r-mto').value,cat:'',bud:''};
+    if(!x.acc||!x.to)return alert('Transfer üçün ən azı iki pul hesabı lazımdır.');
+    if(x.acc===x.to)return alert('Fərqli hesablar seç.');
+  }else{
+    x={acc:$('#r-acc').value,to:'',cat:$('#r-cat').value,bud:$('#r-bud').value};
+    if(!x.acc)return alert('Xərc üçün pul hesabı lazımdır.');
+  }
+  const d={type,name,amt:r2(amt),...x,freq,days,dom};
+  if(id)Object.assign(S.rules.find(q=>q.id===id),d);
   else{const y=new Date();y.setDate(y.getDate()-1);S.rules.push({id:uid(),...d,done:ymd(y)})}
   runRules();save();closeS();render();hap('ok');
 }
@@ -529,8 +558,11 @@ function runRules(){
       const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
       const hit=r.freq==='daily'||(r.freq==='weekly'&&r.days.includes(d.getDay()))||(r.freq==='monthly'&&d.getDate()===Math.min(r.dom,last));
       const a=A(r.acc);if(!hit||!a)continue;
+      const ts=k===today?Date.now():d.getTime(),ty=rtype(r);
+      if(ty==='add'){post(r.name+' · '+a.name,'+',r.amt,{[a.id]:r.amt},{kind:'add',auto:1,rid:r.id,note:r.name,d:ts,quiet:1});n++;continue}
+      if(ty==='move'){const t2=A(r.to);if(!t2||t2.id===a.id)continue;post(r.name+' · '+a.name+' → '+t2.name,'',r.amt,{[a.id]:-r.amt,[t2.id]:r.amt},{kind:'move',auto:1,rid:r.id,note:r.name,d:ts,quiet:1});n++;continue}
       const b=r.bud?A(r.bud):null,dl={[a.id]:-r.amt};if(b)dl[b.id]=-r.amt;
-      post(r.name+' · '+a.name,'−',r.amt,dl,{kind:'spend',cat:r.cat,auto:1,rid:r.id,note:r.name,d:k===today?Date.now():d.getTime(),quiet:1});n++;
+      post(r.name+' · '+a.name,'−',r.amt,dl,{kind:'spend',cat:r.cat,auto:1,rid:r.id,note:r.name,d:ts,quiet:1});n++;
     }
   });
   if(n)S.tx.sort((x,y)=>y.d-x.d);
@@ -666,15 +698,15 @@ function saveEdit(id){
 }
 function delAcc(id){
   const a=A(id);if(!a)return;
-  const nt=S.tx.filter(t=>t.deltas&&id in t.deltas).length,tp=S.tpls.filter(t=>t.acc===id).length,rl=S.rules.filter(r=>r.acc===id).length;
+  const nt=S.tx.filter(t=>t.deltas&&id in t.deltas).length,tp=S.tpls.filter(t=>t.acc===id).length,rl=S.rules.filter(r=>r.acc===id||r.to===id).length;
   const m=[`"${a.name}" hesabı silinsin?`];
   if(a.balance)m.push(`• ${a.balance<0?'Borcu':'Qalığı'} (${fmt(a.balance)}) artıq ümumi məbləğə daxil olmayacaq`);
   if(nt)m.push(`• ${nt} əməliyyat tarixçədə qalacaq, amma artıq bu hesaba bağlı olmayacaq`);
   if(tp)m.push(`• ${tp} şablon silinəcək`);
-  if(rl)m.push(`• ${rl} təkrarlanan xərc silinəcək`);
+  if(rl)m.push(`• ${rl} avtomatik əməliyyat silinəcək`);
   if(!confirm(m.join('\n')))return;
   S.tpls=S.tpls.filter(t=>t.acc!==id);S.tpls.forEach(t=>{if(t.bud===id)t.bud=''});
-  S.rules=S.rules.filter(r=>r.acc!==id);S.rules.forEach(r=>{if(r.bud===id)r.bud=''});
+  S.rules=S.rules.filter(r=>r.acc!==id&&r.to!==id);S.rules.forEach(r=>{if(r.bud===id)r.bud=''});
   ['from','to','bud'].forEach(k=>{if(S.last[k]===id)delete S.last[k]});
   S.acc=S.acc.filter(x=>x.id!==id);save();closeS();render();
 }
