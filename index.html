@@ -602,7 +602,7 @@ function renderMain(){
   h+=dailyHtml();
   h+=tplHtml();
   h+=`<h2>Hesablar <span>${S.acc.length>1?`<button onclick="toggleSort()">${sortMode?'Hazır':'Sırala'}</button>`:''}<button onclick="openAcc()">+ Yeni</button></span></h2><div class="card">`;
-  h+=S.acc.map((a,i)=>{const r_=`<div class="acc" ${sortMode?'':`onclick="goAcc('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(a.balance)}</div>`}</div>`;return sortMode?r_:swW(r_,`delAcc('${a.id}')`,`openEdit('${a.id}')`)}).join('')
+  h+=S.acc.map((a,i)=>{const r_=`<div class="acc" ${sortMode?'':`onclick="goAcc('${a.id}')"`}><div><div class="n">${esc(a.name)}</div>${isB(a)?'<div class="t">xərc büdcəsi</div>':a.daily?'<div class="t">gündəlik hesablanır</div>':''}</div>${sortMode?`<div class="mv"><button onclick="mv('${a.id}',-1)" ${i===0?'disabled':''} aria-label="Yuxarı">▲</button><button onclick="mv('${a.id}',1)" ${i===S.acc.length-1?'disabled':''} aria-label="Aşağı">▼</button></div>`:`<div class="b num ${a.balance<0||isB(a)?'neg':''}">${fmt(isB(a)?Math.max(0,a.balance):a.balance)}</div>`}</div>`;return sortMode?r_:swW(r_,`delAcc('${a.id}')`,`openEdit('${a.id}')`)}).join('')
     ||`<div class="empty">Hələ hesab yoxdur. Məsələn: Nağd, ABB debet kart, Kredit, Aylıq xərc.</div>`;
   h+=`</div><h2>Son əməliyyatlar <button onclick="setView('tx')">Hamısı</button></h2><div class="card">`;
   h+=S.tx.slice(0,5).map(txRow).join('')||`<div class="empty">Hələ əməliyyat yoxdur.</div>`;
@@ -653,7 +653,7 @@ const kbUp=()=>{const v=window.visualViewport;return v?(window.innerHeight-v.hei
 const typing=()=>{const a=document.activeElement;return !!(a&&!a.classList.contains('hs')&&$('#box').contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&kbUp())};
 // klaviatura açıqdırsa kənara toxunuş yalnız klaviaturanı bağlayır, pəncərəni yox
 function sheetTap(){if(typing()){document.activeElement.blur();return}closeS()}
-const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə ':a.balance<0?'borc ':''}${fmt(a.balance)})</option>`).join('');
+const opts=(l,sel)=>l.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.name)} (${isB(a)?'büdcə '+fmt(Math.max(0,a.balance)):(a.balance<0?'borc ':'')+fmt(a.balance)})</option>`).join('');
 const kindOf=a=>isB(a)?'b':a.balance<0?'n':'p';
 const kindSel=k=>`<label>Hesabın növü</label><select id="f-kind"><option value="p" ${k==='p'?'selected':''}>Pulum var</option><option value="n" ${k==='n'?'selected':''}>Borc / xərc (qırmızı)</option><option value="b" ${k==='b'?'selected':''}>Xərc büdcəsi (ümumi puldan çıxılır)</option></select>
 <div class="note">Xərc büdcəsi: ay üçün xərcə ayırdığın məbləğ. Ümumi puldan çıxılır və gündəlik limit avtomatik hesablanır.</div>`;
